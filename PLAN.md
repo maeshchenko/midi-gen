@@ -161,9 +161,9 @@ tests/
 |---|---|---|---|
 | 0 | Vite + TS strict + vitest | dev/test зелёные | ✅ |
 | 1 | prng, code (Base32+CRC), types, theory | roundtrip-тесты | ✅ |
-| 2 | пайплайн gen/* + жанр keygen до Song IR | snapshot-тест | — |
-| 3 | MIDI-экспорт + мин. UI | .mid играет в DAW | — |
-| 4 | Tone-инструменты + live-плеер | play/stop = MIDI | — |
+| 2 | пайплайн gen/* + жанр keygen до Song IR | snapshot-тест | ✅ |
+| 4 | Tone-инструменты + live-плеер + мин. UI | play/stop в браузере | ✅ (приоритет: браузерный синт первичен, экспорт вторичен; после каждой фазы — играющий MVP в браузере — решение 2026-06-12) |
+| 3 | MIDI-экспорт | .mid играет в DAW | — |
 | 5 | offline + WAV + MP3-воркер | оба экспорта | — |
 | 6 | остальные 6 жанров | жанр узнаваем вслепую | — |
 | 7 | piano-roll, keygen-эстетика, ?code= | UX-чеклист | — |

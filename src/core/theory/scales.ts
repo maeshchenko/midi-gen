@@ -12,7 +12,7 @@ export const SCALE_INTERVALS: Record<Mode, readonly number[]> = {
   majorPentatonic: [0, 2, 4, 7, 9],
 };
 
-const mod12 = (n: number) => ((n % 12) + 12) % 12;
+export const mod12 = (n: number): number => ((n % 12) + 12) % 12;
 
 export function scalePitchClasses(tonic: number, mode: Mode): number[] {
   return SCALE_INTERVALS[mode].map((iv) => mod12(tonic + iv));

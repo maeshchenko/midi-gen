@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`generate (keygen) > snapshot canary: fixed seed produces a pinned fingerprint 1`] = `
+{
+  "bpm": 177,
+  "code": "2001-4D2P-F2DB-SQJM",
+  "fingerprint": "5390e5a0",
+  "key": {
+    "mode": "naturalMinor",
+    "tonic": 9,
+  },
+  "noteCounts": [
+    [
+      "Drums",
+      440,
+    ],
+    [
+      "Synth Bass",
+      208,
+    ],
+    [
+      "Saw Arp",
+      960,
+    ],
+    [
+      "Square Lead",
+      101,
+    ],
+  ],
+}
+`;
