@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`serial code codec > known code stays stable across releases 1`] = `"200J-6HB7-H6NW-VVWV"`;

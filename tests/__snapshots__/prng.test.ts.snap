@@ -1,0 +1,10 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`streamFor > known-answer: first values are pinned (cross-version canary) 1`] = `
+[
+  0.3605896553490311,
+  0.2717097597196698,
+  0.9349910472519696,
+  0.9094299238640815,
+]
+`;
