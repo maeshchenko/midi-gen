@@ -57,6 +57,19 @@ export interface GenContext {
 
 export type PartGenerator = (ctx: GenContext) => Track | null;
 
+/** Tracker arp cycle shapes. 'thumb' alternates the root with every other tone. */
+export type ArpPattern = 'up' | 'down' | 'updown' | 'octaves' | 'thumb';
+
+export type BassStyle =
+  | 'synth8'
+  | 'walking'
+  | 'boogie'
+  | 's808'
+  | 'march'
+  | 'sustain'
+  | 'octave8'
+  | 'syncopated16';
+
 export interface GenreConfig {
   id: GenreId;
   name: string;
@@ -69,6 +82,8 @@ export interface GenreConfig {
   swing: [number, number];
   structures: Weighted<SectionSpec[]>[];
   progressions: Weighted<ProgressionTemplate>[];
+  /** Each section NAME gets a progression no other name already took (when possible). */
+  distinctProgressions?: boolean;
   melody: {
     register: [number, number];
     /** 0..1 — how busy the rhythm is. */
@@ -81,7 +96,9 @@ export interface GenreConfig {
     scale?: Mode;
   };
   bass: {
-    style: 'synth8' | 'walking' | 'boogie' | 's808' | 'march' | 'sustain';
+    style: BassStyle;
+    /** Per-seed style pool; overrides `style` when set. */
+    styles?: Weighted<BassStyle>[];
     register: [number, number];
   };
   /** Tracker-style arpeggio voice (keygen and friends). */
@@ -89,6 +106,8 @@ export interface GenreConfig {
     register: [number, number];
     /** Notes per beat: 4 = 16ths, 8 = 32nds. */
     rate: 4 | 8;
+    /** Cycle shape pool, picked once per section name. Missing = 'up'. */
+    patterns?: Weighted<ArpPattern>[];
   };
   comping?: {
     register: [number, number];
@@ -101,6 +120,8 @@ export interface GenreConfig {
     fillEvery: number;
     /** Per-bar probability of a 1/32 hat-roll burst (trap/phonk). */
     rollProb?: number;
+    /** Fill flavour: tom/snare 16ths (default) or tracker snare-rush 32nds. */
+    fillStyle?: 'toms' | 'rush' | 'mixed';
   };
   instruments: Partial<Record<TrackRole, { program: number; name: string }>>;
   arrange: {

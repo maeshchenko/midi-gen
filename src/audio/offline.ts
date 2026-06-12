@@ -22,9 +22,10 @@ export async function renderSong(song: Song): Promise<AudioBuffer> {
           pitch: n.pitch,
           dur: Math.max(0.02, n.dur * secPerTick),
           vel: n.vel / 127,
+          slide: n.slide,
         }));
         new Tone.Part((time, ev) => {
-          voice.trigger(ev.pitch, time, ev.dur, ev.vel);
+          voice.trigger(ev.pitch, time, ev.dur, ev.vel, ev.slide);
         }, events).start(0);
       });
       for (const a of ensemble.automations) {

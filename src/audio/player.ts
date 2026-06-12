@@ -66,9 +66,10 @@ export function createPlayer(song: Song, opts: { loop?: boolean } = {}): Player 
         pitch: n.pitch,
         dur: Math.max(0.02, n.dur * secPerTick),
         vel: n.vel / 127,
+        slide: n.slide,
       }));
       const part = new Tone.Part((time, ev) => {
-        voice.trigger(ev.pitch, time, ev.dur, ev.vel);
+        voice.trigger(ev.pitch, time, ev.dur, ev.vel, ev.slide);
       }, events);
       part.start(0);
       return part;

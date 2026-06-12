@@ -66,6 +66,90 @@ function synth8(ctx: GenContext): NoteEvent[] {
 }
 
 /**
+ * 'octave8' — THE keygen bass: a strict root/root+12 see-saw on every eighth,
+ * with the synth8 chromatic approach into the next chord.
+ */
+function octave8(ctx: GenContext): NoteEvent[] {
+  const rng = ctx.rng('bass');
+  const [lo, hi] = ctx.cfg.bass.register;
+  const eighth = PPQ / 2;
+  const notes: NoteEvent[] = [];
+
+  for (let si = 0; si < ctx.chords.length; si++) {
+    const span = ctx.chords[si]!;
+    const next: ChordSpan | undefined = ctx.chords[si + 1];
+    const root = placeInRegister(span.chord.root, lo, hi);
+    const high = root + 12 <= hi ? root + 12 : root;
+    const count = Math.floor(span.dur / eighth);
+
+    for (let i = 0; i < count; i++) {
+      let pitch = i % 2 === 0 ? root : high;
+      const isLast = i === count - 1;
+      if (isLast && next && next.chord.root !== span.chord.root && rng.chance(0.55)) {
+        const target = placeInRegister(next.chord.root, lo, hi);
+        pitch = target + (rng.chance(0.5) ? 1 : -1);
+        if (pitch < lo) pitch = target + 1;
+        if (pitch > hi) pitch = target - 1;
+      }
+      notes.push({
+        pitch,
+        start: span.start + i * eighth,
+        dur: eighth - 30,
+        vel: (i % 2 === 0 ? 102 : 88) + rng.int(-4, 4),
+      });
+    }
+  }
+  return notes;
+}
+
+/**
+ * 'syncopated16' — late-Amiga drive: a 3-3-2 sixteenth mask repeated per
+ * half-bar, octave pops on the syncopated hits.
+ */
+function syncopated16(ctx: GenContext): NoteEvent[] {
+  const rng = ctx.rng('bass');
+  const [lo, hi] = ctx.cfg.bass.register;
+  const s16 = PPQ / 4;
+  const mask = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0];
+  const notes: NoteEvent[] = [];
+
+  for (let si = 0; si < ctx.chords.length; si++) {
+    const span = ctx.chords[si]!;
+    const next: ChordSpan | undefined = ctx.chords[si + 1];
+    const root = placeInRegister(span.chord.root, lo, hi);
+    const high = root + 12 <= hi ? root + 12 : root;
+    const steps = Math.floor(span.dur / s16);
+
+    let lastHit = -1;
+    for (let s = steps - 1; s >= 0; s--) {
+      if (!mask[s % 16]) continue;
+      if (lastHit < 0) lastHit = s;
+    }
+    for (let s = 0; s < steps; s++) {
+      if (!mask[s % 16]) continue;
+      let nextHit = s + 1;
+      while (nextHit < steps && !mask[nextHit % 16]) nextHit++;
+
+      const downbeat = s % 8 === 0;
+      let pitch = !downbeat && rng.chance(0.45) ? high : root;
+      if (s === lastHit && next && next.chord.root !== span.chord.root && rng.chance(0.5)) {
+        const target = placeInRegister(next.chord.root, lo, hi);
+        pitch = target + (rng.chance(0.5) ? 1 : -1);
+        if (pitch < lo) pitch = target + 1;
+        if (pitch > hi) pitch = target - 1;
+      }
+      notes.push({
+        pitch,
+        start: span.start + s * s16,
+        dur: (nextHit - s) * s16 - 25,
+        vel: (downbeat ? 104 : 90) + rng.int(-4, 4),
+      });
+    }
+  }
+  return notes;
+}
+
+/**
  * 'walking' — jazz quarter notes: root → third → fifth → chromatic approach
  * into the next root, with voice leading (nearest octave to the last note).
  */
@@ -238,8 +322,13 @@ export const genBass: PartGenerator = (ctx) => {
   const inst = ctx.cfg.instruments.bass;
   if (!inst) return null;
 
+  // Per-seed style pool (keygen); without it the fixed style costs no RNG.
+  const style = ctx.cfg.bass.styles
+    ? ctx.rng('bass').weighted(ctx.cfg.bass.styles)
+    : ctx.cfg.bass.style;
+
   let notes: NoteEvent[];
-  switch (ctx.cfg.bass.style) {
+  switch (style) {
     case 'walking':
       notes = walking(ctx);
       break;
@@ -254,6 +343,12 @@ export const genBass: PartGenerator = (ctx) => {
       break;
     case 'sustain':
       notes = sustain(ctx);
+      break;
+    case 'octave8':
+      notes = octave8(ctx);
+      break;
+    case 'syncopated16':
+      notes = syncopated16(ctx);
       break;
     case 'synth8':
       notes = synth8(ctx);

@@ -12,7 +12,7 @@ import { GM_DRUMS } from '../core/gen/drums';
 import { getGenre } from '../core/genres';
 
 export interface Voice {
-  trigger(pitch: number, timeSec: number, durSec: number, velocity: number): void;
+  trigger(pitch: number, timeSec: number, durSec: number, velocity: number, slide?: boolean): void;
   dispose(): void;
   /** Exposed low-pass cutoff for section automation (phonk intro/build-up). */
   cutoff?: Tone.Signal<'frequency'>;
@@ -49,8 +49,20 @@ function makeSquareLead(out: Tone.ToneAudioNode, bpm: number): Voice {
   const delay = new Tone.FeedbackDelay((60 / bpm) * 0.75, 0.35);
   delay.wet.value = 0.28;
   synth.chain(vibrato, delay, out);
+  const attack = monoGuard((p, t, d, v) => synth.triggerAttackRelease(midiHz(p), d, t, v));
   return {
-    trigger: monoGuard((p, t, d, v) => synth.triggerAttackRelease(midiHz(p), d, t, v)),
+    trigger: (p, t, d, v, slide) => {
+      if (slide) {
+        // Tracker 3xx tone-portamento: glide the carrier note (the generator
+        // keeps it ringing through this span) — no envelope retrigger.
+        // Part callbacks fire in time order, so toggling the property is safe.
+        synth.portamento = 0.06;
+        synth.setNote(midiHz(p), t);
+        synth.portamento = 0;
+        return;
+      }
+      attack(p, t, d, v);
+    },
     dispose: () => {
       synth.dispose();
       vibrato.dispose();

@@ -24,7 +24,16 @@ export function buildHarmony(
   for (const section of sections) {
     let template = templateByName.get(section.name);
     if (!template) {
-      template = rng.weighted(cfg.progressions);
+      // distinctProgressions: filter taken templates, ONE weighted draw —
+      // deterministic RNG cost, no re-roll loops. Falls back to the full
+      // pool when there are more section names than templates.
+      let pool = cfg.progressions;
+      if (cfg.distinctProgressions) {
+        const used = new Set(templateByName.values());
+        const free = cfg.progressions.filter((p) => !used.has(p.v));
+        if (free.length > 0) pool = free;
+      }
+      template = rng.weighted(pool);
       templateByName.set(section.name, template);
     }
     const sectionStart = section.startBar * barTicks;

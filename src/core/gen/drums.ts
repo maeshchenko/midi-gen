@@ -116,17 +116,32 @@ export const genDrums: PartGenerator = (ctx) => {
       }
 
       if (isFillBar) {
-        const useToms = rng.chance(0.4);
-        const fillPitches = useToms
-          ? [GM_DRUMS.tomHigh, GM_DRUMS.tomMid, GM_DRUMS.tomLow, GM_DRUMS.snare]
-          : [GM_DRUMS.snare, GM_DRUMS.snare, GM_DRUMS.snare, GM_DRUMS.snare];
-        for (let i = 0; i < 4; i++) {
-          notes.push({
-            pitch: fillPitches[i]!,
-            start: barStart + (12 + i) * stepTicks,
-            dur: Math.max(30, Math.floor(stepTicks / 2)),
-            vel: 70 + i * 13,
-          });
+        const fillStyle = ctx.cfg.drums.fillStyle ?? 'toms';
+        const rush = fillStyle === 'rush' || (fillStyle === 'mixed' && rng.chance(0.5));
+        if (rush) {
+          // Tracker snare-rush: a 32nd-note roll ramping into the next bar.
+          const t32 = stepTicks / 2;
+          for (let i = 0; i < 8; i++) {
+            notes.push({
+              pitch: GM_DRUMS.snare,
+              start: barStart + 12 * stepTicks + i * t32,
+              dur: 25,
+              vel: Math.min(110, 50 + i * 9),
+            });
+          }
+        } else {
+          const useToms = rng.chance(0.4);
+          const fillPitches = useToms
+            ? [GM_DRUMS.tomHigh, GM_DRUMS.tomMid, GM_DRUMS.tomLow, GM_DRUMS.snare]
+            : [GM_DRUMS.snare, GM_DRUMS.snare, GM_DRUMS.snare, GM_DRUMS.snare];
+          for (let i = 0; i < 4; i++) {
+            notes.push({
+              pitch: fillPitches[i]!,
+              start: barStart + (12 + i) * stepTicks,
+              dur: Math.max(30, Math.floor(stepTicks / 2)),
+              vel: 70 + i * 13,
+            });
+          }
         }
       }
     }

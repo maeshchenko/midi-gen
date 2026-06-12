@@ -1,10 +1,41 @@
 import { PPQ, type NoteEvent } from '../types';
-import type { PartGenerator } from '../genres/types';
+import type { ArpPattern, PartGenerator } from '../genres/types';
 import { closeVoicing } from '../theory/chords';
+
+/** Expand a chord voicing into one cycle of the given tracker arp shape. */
+function arpCycle(pattern: ArpPattern, voicing: number[], hi: number): number[] {
+  const up = [...voicing, voicing[0]! + 12].filter((p) => p <= hi);
+  switch (pattern) {
+    case 'down':
+      return [...up].reverse();
+    case 'updown':
+      return up.length > 2 ? [...up, ...up.slice(1, -1).reverse()] : up;
+    case 'octaves': {
+      const out: number[] = [];
+      for (const p of voicing) {
+        out.push(p);
+        if (p + 12 <= hi) out.push(p + 12);
+      }
+      return out;
+    }
+    case 'thumb': {
+      const root = voicing[0]!;
+      const out: number[] = [];
+      for (const p of up.slice(1)) {
+        out.push(root, p);
+      }
+      return out.length > 0 ? out : up;
+    }
+    default:
+      return up;
+  }
+}
 
 /**
  * Tracker-style arpeggio: a chord faked by one fast voice cycling its tones —
  * the defining sound of keygen/chiptune music. Rate 8 = 32nd notes.
+ * With `arp.patterns` set, each section name draws its own cycle shape and
+ * gets cycle/beat velocity accents; otherwise the legacy plain 'up' cycle.
  */
 export const genTrackerArp: PartGenerator = (ctx) => {
   const inst = ctx.cfg.instruments.arp;
@@ -15,18 +46,41 @@ export const genTrackerArp: PartGenerator = (ctx) => {
   const stepTicks = PPQ / arpCfg.rate;
   const notes: NoteEvent[] = [];
 
-  for (const span of ctx.chords) {
-    const voicing = closeVoicing(span.chord, lo);
-    const seq = [...voicing, voicing[0]! + 12].filter((p) => p <= hi);
-    if (seq.length === 0) continue;
-    const count = Math.floor(span.dur / stepTicks);
-    for (let i = 0; i < count; i++) {
-      notes.push({
-        pitch: seq[i % seq.length]!,
-        start: span.start + i * stepTicks,
-        dur: stepTicks,
-        vel: i % seq.length === 0 ? 80 : 64,
-      });
+  // Pattern per section name — same memoization idea as harmony templates.
+  // No RNG is touched without the config field, so other genres are untouched.
+  const patternByName = new Map<string, ArpPattern>();
+  const patternFor = (name: string): ArpPattern => {
+    if (!arpCfg.patterns) return 'up';
+    let p = patternByName.get(name);
+    if (!p) {
+      p = ctx.rng('comping').weighted(arpCfg.patterns);
+      patternByName.set(name, p);
+    }
+    return p;
+  };
+  const accented = !!arpCfg.patterns;
+
+  for (const section of ctx.sections) {
+    const s0 = section.startBar * ctx.barTicks;
+    const s1 = s0 + section.bars * ctx.barTicks;
+    const pattern = patternFor(section.name);
+
+    for (const span of ctx.chords) {
+      if (span.start < s0 || span.start >= s1) continue;
+      const voicing = closeVoicing(span.chord, lo);
+      const seq = arpCycle(pattern, voicing, hi);
+      if (seq.length === 0) continue;
+      const count = Math.floor(span.dur / stepTicks);
+      for (let i = 0; i < count; i++) {
+        const cycleStart = i % seq.length === 0;
+        const beatStart = (i * stepTicks) % PPQ === 0;
+        notes.push({
+          pitch: seq[i % seq.length]!,
+          start: span.start + i * stepTicks,
+          dur: stepTicks,
+          vel: accented ? (cycleStart ? 84 : beatStart ? 74 : 62) : cycleStart ? 80 : 64,
+        });
+      }
     }
   }
 

@@ -1,7 +1,17 @@
 import type { Mode } from '../types';
 import { SCALE_INTERVALS } from './scales';
 
-export type ChordQuality = 'diatonic' | 'dom7' | 'min7' | 'maj7' | 'dim7' | 'halfDim7';
+export type ChordQuality =
+  | 'diatonic'
+  | 'maj'
+  | 'min'
+  | 'sus2'
+  | 'sus4'
+  | 'dom7'
+  | 'min7'
+  | 'maj7'
+  | 'dim7'
+  | 'halfDim7';
 
 export interface Chord {
   /** Root pitch class 0–11. */
@@ -15,6 +25,10 @@ export interface Chord {
 const mod12 = (n: number) => ((n % 12) + 12) % 12;
 
 const QUALITY_INTERVALS: Record<Exclude<ChordQuality, 'diatonic'>, number[]> = {
+  maj: [0, 4, 7],
+  min: [0, 3, 7],
+  sus2: [0, 2, 7],
+  sus4: [0, 5, 7],
   dom7: [0, 4, 7, 10],
   min7: [0, 3, 7, 10],
   maj7: [0, 4, 7, 11],

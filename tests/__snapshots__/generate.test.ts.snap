@@ -4,7 +4,7 @@ exports[`generate (keygen) > snapshot canary: fixed seed produces a pinned finge
 {
   "bpm": 177,
   "code": "2001-4D2P-F2DB-SQJM",
-  "fingerprint": "5390e5a0",
+  "fingerprint": "ddc7d500",
   "key": {
     "mode": "naturalMinor",
     "tonic": 9,
@@ -12,7 +12,7 @@ exports[`generate (keygen) > snapshot canary: fixed seed produces a pinned finge
   "noteCounts": [
     [
       "Drums",
-      440,
+      431,
     ],
     [
       "Synth Bass",
@@ -24,7 +24,7 @@ exports[`generate (keygen) > snapshot canary: fixed seed produces a pinned finge
     ],
     [
       "Square Lead",
-      101,
+      116,
     ],
   ],
 }

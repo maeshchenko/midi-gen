@@ -34,6 +34,12 @@ export interface NoteEvent {
   dur: number;
   /** Velocity 1–127. */
   vel: number;
+  /**
+   * Tracker 3xx tone-portamento: the audio layer glides the already-sounding
+   * voice to this pitch instead of retriggering. The generator must keep a
+   * carrier note ringing through this note's span. MIDI export ignores it.
+   */
+  slide?: boolean;
 }
 
 export interface Track {

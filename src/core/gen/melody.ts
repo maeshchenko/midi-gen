@@ -40,13 +40,13 @@ function buildRhythm(rng: Rng, cfg: GenContext['cfg']['melody'], stepsPerBar: nu
   });
 }
 
-function nextScalePitch(p: number, dir: 1 | -1, tonic: number, mode: Mode): number {
+export function nextScalePitch(p: number, dir: 1 | -1, tonic: number, mode: Mode): number {
   let q = p + dir;
   while (!inScale(q, tonic, mode)) q += dir;
   return q;
 }
 
-function nearestChordTone(p: number, chord: Chord): number {
+export function nearestChordTone(p: number, chord: Chord): number {
   for (let d = 0; d < 12; d++) {
     if (chord.pitchClasses.includes(mod12(p - d))) return p - d;
     if (chord.pitchClasses.includes(mod12(p + d))) return p + d;
@@ -54,7 +54,7 @@ function nearestChordTone(p: number, chord: Chord): number {
   return p;
 }
 
-function clampRegister(p: number, lo: number, hi: number): number {
+export function clampRegister(p: number, lo: number, hi: number): number {
   while (p > hi) p -= 12;
   while (p < lo) p += 12;
   return p;
