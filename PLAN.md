@@ -165,7 +165,7 @@ tests/
 | 4 | Tone-инструменты + live-плеер + мин. UI | play/stop в браузере | ✅ (приоритет: браузерный синт первичен, экспорт вторичен; после каждой фазы — играющий MVP в браузере — решение 2026-06-12) |
 | 3 | MIDI-экспорт | .mid играет в DAW | — |
 | 5 | offline + WAV + MP3-воркер | оба экспорта | — |
-| 6 | остальные 6 жанров | жанр узнаваем вслепую | — |
+| 6 | остальные жанры | жанр узнаваем вслепую | ✅ grime, noir, anime, blues, military, dark academia, nightcore, drift phonk (v3 по ТЗ; v1–v2 отвергнуты) |
 | 7 | piano-roll, keygen-эстетика, ?code= | UX-чеклист | — |
 | 8 | exports map, README, node-демо | core в Node без Tone | — |
 

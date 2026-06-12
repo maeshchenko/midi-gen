@@ -1,0 +1,65 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`anime > canary 1`] = `
+{
+  "bpm": 129,
+  "code": "2400-0000-0051-FRQ7",
+  "fingerprint": "c96f572b",
+}
+`;
+
+exports[`blues > canary 1`] = `
+{
+  "bpm": 82,
+  "code": "2800-0000-000B-3SCR",
+  "fingerprint": "519fc14f",
+}
+`;
+
+exports[`dark academia > canary 1`] = `
+{
+  "bpm": 88,
+  "code": "2C00-0000-005C-NQQJ",
+  "fingerprint": "6f3ed6a0",
+}
+`;
+
+exports[`grime (ex-Memphis phonk) > canary 1`] = `
+{
+  "bpm": 141,
+  "code": "2E00-0000-007T-VRDE",
+  "fingerprint": "891c70c7",
+}
+`;
+
+exports[`military > canary 1`] = `
+{
+  "bpm": 121,
+  "code": "2A00-0000-0001-G4J9",
+  "fingerprint": "2eb6fc9f",
+}
+`;
+
+exports[`nightcore > canary 1`] = `
+{
+  "bpm": 160,
+  "code": "2G00-0000-0000-S9Z6",
+  "fingerprint": "7850e466",
+}
+`;
+
+exports[`noir > canary 1`] = `
+{
+  "bpm": 87,
+  "code": "2200-0000-0000-F6WS",
+  "fingerprint": "e7eeabdb",
+}
+`;
+
+exports[`phonk (drift, spec v3) > canary 1`] = `
+{
+  "bpm": 127,
+  "code": "2600-0000-0391-YWVG",
+  "fingerprint": "b96d87a1",
+}
+`;

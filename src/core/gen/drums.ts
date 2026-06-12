@@ -22,12 +22,14 @@ function laneNotes(
   stepTicks: number,
   skipFrom: number,
   rng: { chance(p: number): boolean; int(a: number, b: number): number },
+  skipSteps?: Set<number>,
 ): NoteEvent[] {
   const accents = pattern[lane];
   if (!accents) return [];
   const notes: NoteEvent[] = [];
   for (let s = 0; s < STEPS_PER_BAR; s++) {
     if (s >= skipFrom) break;
+    if (skipSteps?.has(s)) continue;
     const accent = accents[s] ?? 0;
     if (accent <= 0) continue;
     // Main hits (accent 1) are sacred; weaker ones occasionally drop out.
@@ -73,11 +75,30 @@ export const genDrums: PartGenerator = (ctx) => {
         (bar + 1) % ctx.cfg.drums.fillEvery === 0 || bar === section.bars - 1;
       const skipFrom = isFillBar ? 12 : STEPS_PER_BAR;
 
+      // Trap/phonk hat rolls: a 1/32 burst REPLACING two 16th steps — the
+      // pattern's own hat hits on those steps are suppressed, otherwise the
+      // mono hat synth gets two events at the same instant.
+      const rollSteps = new Set<number>();
+      if (ctx.cfg.drums.rollProb && !isFillBar && rng.chance(ctx.cfg.drums.rollProb)) {
+        const rollStep = rng.int(2, 13);
+        rollSteps.add(rollStep);
+        rollSteps.add(rollStep + 1);
+        const t32 = stepTicks / 2;
+        for (let i = 0; i < 4; i++) {
+          notes.push({
+            pitch: GM_DRUMS.hatClosed,
+            start: barStart + rollStep * stepTicks + i * t32,
+            dur: 25,
+            vel: 48 + i * 9,
+          });
+        }
+      }
+
       notes.push(
         ...laneNotes(pattern, 'kick', barStart, stepTicks, skipFrom, rng),
         ...laneNotes(pattern, 'snare', barStart, stepTicks, skipFrom, rng),
-        ...laneNotes(pattern, 'hatClosed', barStart, stepTicks, skipFrom, rng),
-        ...laneNotes(pattern, 'hatOpen', barStart, stepTicks, skipFrom, rng),
+        ...laneNotes(pattern, 'hatClosed', barStart, stepTicks, skipFrom, rng, rollSteps),
+        ...laneNotes(pattern, 'hatOpen', barStart, stepTicks, skipFrom, rng, rollSteps),
       );
 
       // Ghost snare flavour on a weak 16th.

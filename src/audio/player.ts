@@ -73,6 +73,9 @@ export function createPlayer(song: Song, opts: { loop?: boolean } = {}): Player 
       part.start(0);
       return part;
     });
+    for (const a of ensemble!.automations) {
+      transport.schedule((t) => a.apply(t), a.time);
+    }
   };
 
   const player: Player = {

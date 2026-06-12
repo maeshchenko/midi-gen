@@ -47,6 +47,12 @@ export interface GenContext {
   beatTicks: number;
   chords: ChordSpan[];
   chordAt: (tick: number) => Chord;
+  /**
+   * Cross-part scratchpad for genre hooks (e.g. phonk bass must duplicate the
+   * kick pattern — drums write 'phonk.kicks', bass reads it). Generators run
+   * in fixed order: drums → bass → chords → arp → melody.
+   */
+  shared: Map<string, unknown>;
 }
 
 export type PartGenerator = (ctx: GenContext) => Track | null;
@@ -69,9 +75,11 @@ export interface GenreConfig {
     restProb: number;
     /** 0..1 — weight of off-16th onsets. */
     syncopation: number;
+    /** Melody walks this scale instead of the key mode (blues over dom7 harmony). */
+    scale?: Mode;
   };
   bass: {
-    style: 'synth8' | 'walking' | 'boogie' | 's808' | 'march' | 'arpeggiated';
+    style: 'synth8' | 'walking' | 'boogie' | 's808' | 'march' | 'sustain';
     register: [number, number];
   };
   /** Tracker-style arpeggio voice (keygen and friends). */
@@ -80,11 +88,17 @@ export interface GenreConfig {
     /** Notes per beat: 4 = 16ths, 8 = 32nds. */
     rate: 4 | 8;
   };
-  comping?: { register: [number, number] };
+  comping?: {
+    register: [number, number];
+    /** sustained pads (default) | short on-beat stabs (brass) | Alberti broken chords. */
+    style?: 'sustained' | 'stabs' | 'alberti';
+  };
   drums: {
     patterns: Weighted<StepPattern>[];
     /** A fill lands every N bars (and on the last bar of a section). */
     fillEvery: number;
+    /** Per-bar probability of a 1/32 hat-roll burst (trap/phonk). */
+    rollProb?: number;
   };
   instruments: Partial<Record<TrackRole, { program: number; name: string }>>;
   arrange: {
@@ -97,6 +111,21 @@ export interface GenreConfig {
     timingTicks: number;
     /** Max velocity jitter as a fraction (0.1 = ±10%). */
     velocity: number;
+  };
+  /**
+   * Declarative low-pass automation, interpreted by the audio layer.
+   * Sections not listed sit at `open`. Pure data — core stays Tone-free.
+   */
+  filterAutomation?: {
+    /** Whose cutoff to drive; 'master' inserts a filter on the master bus. */
+    target: 'lead' | 'arp' | 'master';
+    /** Fully-open cutoff in Hz. */
+    open: number;
+    sections: Record<
+      string,
+      | { move: 'closed'; hz: number } // hold closed (0.3s ramp in)
+      | { move: 'sweep'; fromHz: number } // linear fromHz → open across the section
+    >;
   };
   /** Genre-specific overrides for the default part generators. */
   hooks?: Partial<Record<'melody' | 'bass' | 'drums' | 'comping' | 'arp', PartGenerator>>;

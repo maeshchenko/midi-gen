@@ -1,10 +1,29 @@
 import type { GenreId } from '../types';
 import type { GenreConfig } from './types';
 import { KEYGEN } from './keygen';
+import { NOIR } from './noir';
+import { GRIME } from './grime';
+import { ANIME } from './anime';
+import { BLUES } from './blues';
+import { MILITARY } from './military';
+import { DARKACADEMIA } from './darkacademia';
+import { NIGHTCORE } from './nightcore';
+import { PHONK } from './phonk';
 
-/** Implemented genres. The rest of GENRE_IDS land in phase 6. */
+/**
+ * Implemented genres. ('phonk' is the third drift-phonk attempt, built to the
+ * user's 2026-06-12 spec — see phonk.ts; attempts 1–2 are in the CHANGELOG.)
+ */
 export const GENRES: Partial<Record<GenreId, GenreConfig>> = {
   keygen: KEYGEN,
+  grime: GRIME,
+  phonk: PHONK,
+  noir: NOIR,
+  anime: ANIME,
+  blues: BLUES,
+  military: MILITARY,
+  darkacademia: DARKACADEMIA,
+  nightcore: NIGHTCORE,
 };
 
 export function getGenre(id: GenreId): GenreConfig {

@@ -2,10 +2,10 @@ import { PPQ, type NoteEvent } from '../types';
 import type { GenContext, PartGenerator } from '../genres/types';
 import type { Rng } from '../prng';
 import type { Chord } from '../theory/chords';
+import type { Mode } from '../types';
 import { inScale, mod12 } from '../theory/scales';
 
 const STEP = PPQ / 4; // 16th-note grid
-const STEPS_PER_BAR = 16;
 const UNIT_BARS = 2; // motif length
 
 interface RhythmEvent {
@@ -14,17 +14,19 @@ interface RhythmEvent {
 }
 
 /**
- * Motif rhythm on a 16th grid. Onset probability is highest on strong beats
- * and scales with density; off-16th positions only fire via syncopation.
+ * Motif rhythm on a 16th grid (any meter — stepsPerBar derives from the bar).
+ * Onset probability is highest on strong beats and scales with density;
+ * off-16th positions only fire via syncopation.
  */
-function buildRhythm(rng: Rng, cfg: GenContext['cfg']['melody']): RhythmEvent[] {
-  const steps = UNIT_BARS * STEPS_PER_BAR;
+function buildRhythm(rng: Rng, cfg: GenContext['cfg']['melody'], stepsPerBar: number): RhythmEvent[] {
+  const steps = UNIT_BARS * stepsPerBar;
+  const half = stepsPerBar / 2;
   const onsets: number[] = [];
   for (let s = 0; s < steps; s++) {
-    const inBar = s % STEPS_PER_BAR;
+    const inBar = s % stepsPerBar;
     let w: number;
     if (inBar === 0) w = 1;
-    else if (inBar === 8) w = 0.85;
+    else if (inBar === half) w = 0.85;
     else if (inBar % 4 === 0) w = 0.7;
     else if (inBar % 2 === 0) w = 0.5;
     else w = 0.4 * cfg.syncopation;
@@ -38,7 +40,7 @@ function buildRhythm(rng: Rng, cfg: GenContext['cfg']['melody']): RhythmEvent[] 
   });
 }
 
-function nextScalePitch(p: number, dir: 1 | -1, tonic: number, mode: GenContext['key']['mode']): number {
+function nextScalePitch(p: number, dir: 1 | -1, tonic: number, mode: Mode): number {
   let q = p + dir;
   while (!inScale(q, tonic, mode)) q += dir;
   return q;
@@ -64,18 +66,21 @@ function assignPitches(
   ctx: GenContext,
   rhythm: RhythmEvent[],
   unitStartTick: number,
+  stepsPerBar: number,
   state: { pitch: number; leapDir: 0 | 1 | -1 },
 ): NoteEvent[] {
   const { register, leapProb } = ctx.cfg.melody;
   const [lo, hi] = register;
   const center = (lo + hi) / 2;
-  const { tonic, mode } = ctx.key;
+  const tonic = ctx.key.tonic;
+  const mode = ctx.cfg.melody.scale ?? ctx.key.mode;
+  const strongEvery = Math.max(2, stepsPerBar / 2);
   const notes: NoteEvent[] = [];
 
   for (const ev of rhythm) {
     const tick = unitStartTick + ev.step * STEP;
     const chord = ctx.chordAt(tick);
-    const strong = ev.step % 8 === 0;
+    const strong = ev.step % strongEvery === 0;
 
     if (strong) {
       state.pitch = clampRegister(nearestChordTone(state.pitch, chord), lo, hi);
@@ -127,6 +132,7 @@ export const genMelody: PartGenerator = (ctx) => {
   const inst = ctx.cfg.instruments.lead;
   if (!inst) return null;
   const rng = ctx.rng('melody');
+  const stepsPerBar = Math.round(ctx.barTicks / STEP);
   const unitTicks = UNIT_BARS * ctx.barTicks;
   const cache = new Map<string, NoteEvent[]>(); // section name → notes relative to section start
   const notes: NoteEvent[] = [];
@@ -141,8 +147,8 @@ export const genMelody: PartGenerator = (ctx) => {
       continue;
     }
 
-    const rhythmA = buildRhythm(rng, ctx.cfg.melody);
-    const rhythmB = buildRhythm(rng, ctx.cfg.melody);
+    const rhythmA = buildRhythm(rng, ctx.cfg.melody, stepsPerBar);
+    const rhythmB = buildRhythm(rng, ctx.cfg.melody, stepsPerBar);
     const units = Math.ceil(section.bars / UNIT_BARS);
     const state = { pitch: Math.round((ctx.cfg.melody.register[0] + ctx.cfg.melody.register[1]) / 2), leapDir: 0 as 0 | 1 | -1 };
     const sectionNotes: NoteEvent[] = [];
@@ -150,7 +156,7 @@ export const genMelody: PartGenerator = (ctx) => {
     for (let u = 0; u < units; u++) {
       const unitStart = sectionStart + u * unitTicks;
       const rhythm = u % 4 === 2 ? rhythmB : rhythmA;
-      const unitNotes = assignPitches(rng, ctx, rhythm, unitStart, state);
+      const unitNotes = assignPitches(rng, ctx, rhythm, unitStart, stepsPerBar, state);
 
       if (u === units - 1 && unitNotes.length > 0) {
         // Cadence: last note lands on the chord's root or fifth and rings out.

@@ -73,6 +73,7 @@ export function generate(opts: GenerateOptions = {}): Song {
     beatTicks,
     chords,
     chordAt: makeChordLookup(chords),
+    shared: new Map(),
   };
 
   // Fixed order — part generators and humanize consume RNG sequentially.

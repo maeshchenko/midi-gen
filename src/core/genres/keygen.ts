@@ -100,4 +100,13 @@ export const KEYGEN: GenreConfig = {
     sectionVelocity: { intro: 0.85, outro: 0.9 },
   },
   humanize: { timingTicks: 3, velocity: 0.06 }, // machine-tight, it's a tracker
+  filterAutomation: {
+    // Cracktro staple: the arp fades in through an opening filter.
+    target: 'arp',
+    open: 4800,
+    sections: {
+      intro: { move: 'sweep', fromHz: 600 },
+      outro: { move: 'closed', hz: 1400 }, // duck under before the loop seam
+    },
+  },
 };
