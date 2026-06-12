@@ -1,5 +1,5 @@
 import type { Rng } from '../prng';
-import type { Mode, Section } from '../types';
+import { sectionKey, type Mode, type Section } from '../types';
 import type { ChordSpan, GenreConfig } from '../genres/types';
 import { chordFromDegree } from '../theory/chords';
 import { expandProgression, type ProgressionTemplate } from '../theory/progressions';
@@ -22,7 +22,7 @@ export function buildHarmony(
 
   const spans: ChordSpan[] = [];
   for (const section of sections) {
-    let template = templateByName.get(section.name);
+    let template = templateByName.get(sectionKey(section));
     if (!template) {
       // distinctProgressions: filter taken templates, ONE weighted draw —
       // deterministic RNG cost, no re-roll loops. Falls back to the full
@@ -34,7 +34,7 @@ export function buildHarmony(
         if (free.length > 0) pool = free;
       }
       template = rng.weighted(pool);
-      templateByName.set(section.name, template);
+      templateByName.set(sectionKey(section), template);
     }
     const sectionStart = section.startBar * barTicks;
     const steps = expandProgression(template, section.bars * beatsPerBar);

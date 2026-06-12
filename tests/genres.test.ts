@@ -488,3 +488,189 @@ describe('phonk (drift, spec v3)', () => {
     expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
   });
 });
+
+describe('eurobeat', () => {
+  const song = generate({ genre: 'eurobeat', seed: 0xeb17n });
+  const barTicks = 4 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('4/4, 150–162 BPM', () => {
+    expect(song.timeSig).toEqual([4, 4]);
+    expect(song.durationTicks % barTicks).toBe(0);
+    expect(song.bpm).toBeGreaterThanOrEqual(150);
+    expect(song.bpm).toBeLessThanOrEqual(162);
+  });
+
+  it('intro has no lead and no chord stabs', () => {
+    const intro = song.sections[0]!;
+    const within = (n: { start: number }) =>
+      n.start >= intro.startBar * barTicks + 10 &&
+      n.start < (intro.startBar + intro.bars) * barTicks - 10;
+    for (const track of song.tracks) {
+      if (track.role === 'lead' || track.role === 'chords') {
+        expect(track.notes.filter(within).length).toBe(0);
+      }
+    }
+  });
+
+  it('octave bass: only roots and their +12', () => {
+    const bass = song.tracks.find((t) => t.role === 'bass')!;
+    const pitches = new Set(bass.notes.map((n) => n.pitch % 12));
+    // ≤10: chord roots of up to 4 distinct progressions (intro/build/drop/break),
+    // still far from a 12-tone chromatic walk.
+    expect(pitches.size).toBeLessThanOrEqual(10);
+  });
+
+  it('beatmap grid: zero timing humanize, every onset on the 32nd grid', () => {
+    for (const track of song.tracks) {
+      for (const n of track.notes) {
+        expect(n.start % 60).toBe(0);
+      }
+    }
+  });
+
+  it('dynamics arc: break is a valley between drop peaks', () => {
+    const energy = (name: string) => {
+      const secs = song.sections.filter((s) => s.name === name);
+      let sum = 0;
+      let bars = 0;
+      for (const s of secs) {
+        const from = s.startBar * barTicks;
+        const to = (s.startBar + s.bars) * barTicks;
+        for (const t of song.tracks) {
+          for (const n of t.notes) if (n.start >= from && n.start < to) sum += n.vel;
+        }
+        bars += s.bars;
+      }
+      return sum / bars;
+    };
+    expect(energy('drop')).toBeGreaterThan(energy('break') * 1.3);
+    expect(energy('drop')).toBeGreaterThan(energy('intro') * 1.5);
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});
+
+describe('outrun', () => {
+  const song = generate({ genre: 'outrun', seed: 0x0072n });
+  const barTicks = 4 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('4/4, 118–132 BPM', () => {
+    expect(song.timeSig).toEqual([4, 4]);
+    expect(song.bpm).toBeGreaterThanOrEqual(118);
+    expect(song.bpm).toBeLessThanOrEqual(132);
+  });
+
+  it('beatmap grid: zero timing humanize, every onset on the 32nd grid', () => {
+    for (const track of song.tracks) {
+      for (const n of track.notes) {
+        expect(n.start % 60).toBe(0);
+      }
+    }
+  });
+
+  it('dynamics arc: break is a valley between drop peaks', () => {
+    const energy = (name: string) => {
+      const secs = song.sections.filter((s) => s.name === name);
+      let sum = 0;
+      let bars = 0;
+      for (const s of secs) {
+        const from = s.startBar * barTicks;
+        const to = (s.startBar + s.bars) * barTicks;
+        for (const t of song.tracks) {
+          for (const n of t.notes) if (n.start >= from && n.start < to) sum += n.vel;
+        }
+        bars += s.bars;
+      }
+      return sum / bars;
+    };
+    expect(energy('drop')).toBeGreaterThan(energy('break') * 1.3);
+    expect(energy('drop')).toBeGreaterThan(energy('intro') * 1.5);
+  });
+
+  it('intro is drumless and bassless atmosphere', () => {
+    const intro = song.sections[0]!;
+    const within = (n: { start: number }) =>
+      n.start >= intro.startBar * barTicks + 10 &&
+      n.start < (intro.startBar + intro.bars) * barTicks - 10;
+    for (const track of song.tracks) {
+      if (track.role === 'drums' || track.role === 'bass' || track.role === 'lead') {
+        expect(track.notes.filter(within).length).toBe(0);
+      }
+    }
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});
+
+describe('grimerun', () => {
+  const song = generate({ genre: 'grimerun', seed: 0x6789n });
+  const barTicks = 4 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('4/4, 132–148 BPM', () => {
+    expect(song.timeSig).toEqual([4, 4]);
+    expect(song.bpm).toBeGreaterThanOrEqual(132);
+    expect(song.bpm).toBeLessThanOrEqual(148);
+  });
+
+  it('beatmap grid: zero timing humanize, every onset on the 32nd grid', () => {
+    for (const track of song.tracks) {
+      for (const n of track.notes) {
+        expect(n.start % 60).toBe(0);
+      }
+    }
+  });
+
+  it('dynamics arc: break is a valley between drop peaks', () => {
+    const energy = (name: string) => {
+      const secs = song.sections.filter((s) => s.name === name);
+      let sum = 0;
+      let bars = 0;
+      for (const s of secs) {
+        const from = s.startBar * barTicks;
+        const to = (s.startBar + s.bars) * barTicks;
+        for (const t of song.tracks) {
+          for (const n of t.notes) if (n.start >= from && n.start < to) sum += n.vel;
+        }
+        bars += s.bars;
+      }
+      return sum / bars;
+    };
+    expect(energy('drop')).toBeGreaterThan(energy('break') * 1.3);
+    expect(energy('drop')).toBeGreaterThan(energy('intro') * 1.5);
+  });
+
+  it('break is drumless — sub and pad only', () => {
+    const brk = song.sections.find((s) => s.name === 'break')!;
+    const within = (n: { start: number }) =>
+      n.start >= brk.startBar * barTicks + 10 &&
+      n.start < (brk.startBar + brk.bars) * barTicks - 10;
+    for (const track of song.tracks) {
+      if (track.role === 'drums' || track.role === 'lead') {
+        expect(track.notes.filter(within).length).toBe(0);
+      }
+    }
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});

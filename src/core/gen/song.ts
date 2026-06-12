@@ -16,22 +16,33 @@ import { humanize } from './humanize';
 export interface GenerateOptions {
   genre?: GenreId;
   seed?: bigint;
-  /** Serial code; restores genre + seed. Explicit `genre` overrides the code's. */
+  /** Serial code; restores genre + seed + minutes. Explicit `genre`/`minutes` override the code's. */
   code?: string;
+  /**
+   * Approximate target length in minutes, integer 1–7. Stored in the code's
+   * 3 flags bits, so the code alone restores the full-length song. Omit (or 0)
+   * for the genre's natural form — identical to pre-feature behavior.
+   */
+  minutes?: number;
 }
 
 export function generate(opts: GenerateOptions = {}): Song {
   let genre: GenreId;
   let seed: bigint;
+  let minutes = opts.minutes ?? 0;
   if (opts.code) {
     const decoded = decodeCode(opts.code);
     genre = opts.genre ?? decoded.genre;
     seed = decoded.seed;
+    minutes = opts.minutes ?? decoded.flags;
   } else {
     genre = opts.genre ?? 'keygen';
     seed = opts.seed ?? randomSeed();
   }
-  const code = encodeCode(genre, seed);
+  if (!Number.isInteger(minutes) || minutes < 0 || minutes > 7) {
+    throw new RangeError('minutes must be an integer 1–7 (or omitted)');
+  }
+  const code = encodeCode(genre, seed, { flags: minutes });
   const cfg = getGenre(genre);
 
   const streams = new Map<string, Rng>();
@@ -60,7 +71,11 @@ export function generate(opts: GenerateOptions = {}): Song {
   const beatTicks = (PPQ * 4) / timeSig[1];
   const barTicks = beatTicks * timeSig[0];
 
-  const { sections, totalBars } = buildForm(cfg, rng('form'));
+  // Bars that make `minutes` of music at this bpm (bpm counts quarter notes).
+  const targetBars = minutes
+    ? Math.max(1, Math.round((minutes * 60 * bpm * PPQ) / 60 / barTicks))
+    : undefined;
+  const { sections, totalBars } = buildForm(cfg, rng('form'), targetBars);
   const chords = buildHarmony(sections, cfg, { tonic, mode }, barTicks, beatTicks, rng('harmony'));
 
   const ctx: GenContext = {

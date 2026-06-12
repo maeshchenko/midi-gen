@@ -1,4 +1,4 @@
-import { PPQ, type NoteEvent } from '../types';
+import { PPQ, sectionKey, type NoteEvent } from '../types';
 import type { GenreConfig, PartGenerator, StepPattern } from './types';
 import type { Rng } from '../prng';
 import { mod12 } from '../theory/scales';
@@ -85,7 +85,7 @@ function nearestPc(pc: number, prev: number, lo: number, hi: number): number {
   return best < 0 ? prev : best;
 }
 
-const genGrimeLead: PartGenerator = (ctx) => {
+export const genGrimeLead: PartGenerator = (ctx) => {
   const inst = ctx.cfg.instruments.lead;
   if (!inst) return null;
   const rng = ctx.rng('melody');
@@ -101,7 +101,7 @@ const genGrimeLead: PartGenerator = (ctx) => {
     const sectionStart = section.startBar * ctx.barTicks;
     const sectionEnd = sectionStart + section.bars * ctx.barTicks;
 
-    const cached = cache.get(section.name);
+    const cached = cache.get(sectionKey(section));
     if (cached) {
       notes.push(...cached.map((n) => ({ ...n, start: n.start + sectionStart })));
       continue;
@@ -146,7 +146,7 @@ const genGrimeLead: PartGenerator = (ctx) => {
     const clipped = sectionNotes.filter((n) => n.start < sectionEnd);
     for (const n of clipped) n.dur = Math.min(n.dur, sectionEnd - n.start);
 
-    cache.set(section.name, clipped.map((n) => ({ ...n, start: n.start - sectionStart })));
+    cache.set(sectionKey(section), clipped.map((n) => ({ ...n, start: n.start - sectionStart })));
     notes.push(...clipped);
   }
 

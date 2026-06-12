@@ -10,6 +10,9 @@ export const GENRE_IDS = [
   'nightcore',
   'tune',
   'musicbox',
+  'eurobeat',
+  'outrun',
+  'grimerun',
 ] as const;
 
 export type GenreId = (typeof GENRE_IDS)[number];
@@ -58,6 +61,18 @@ export interface Section {
   name: string;
   startBar: number;
   bars: number;
+  /**
+   * Repeat variant for stretched (minutes > 0) songs: undefined = the
+   * original pass, 1 = the alternate pass (A B A B form). Generators key
+   * their per-section caches by `sectionKey`, so variant sections get fresh
+   * material; arrange/audio keep using `name` (layers, velocity, filters).
+   */
+  variant?: number;
+}
+
+/** Cache key for per-section generated material. */
+export function sectionKey(s: { name: string; variant?: number }): string {
+  return s.variant ? `${s.name}#${s.variant}` : s.name;
 }
 
 export interface Song {

@@ -24,11 +24,27 @@ exports[`dark academia > canary 1`] = `
 }
 `;
 
+exports[`eurobeat > canary 1`] = `
+{
+  "bpm": 154,
+  "code": "2P00-0000-000E-P5RH",
+  "fingerprint": "75498fb6",
+}
+`;
+
 exports[`grime (ex-Memphis phonk) > canary 1`] = `
 {
   "bpm": 141,
   "code": "2E00-0000-007T-VRDE",
   "fingerprint": "d88331ef",
+}
+`;
+
+exports[`grimerun > canary 1`] = `
+{
+  "bpm": 137,
+  "code": "2T00-0000-0006-F283",
+  "fingerprint": "776dceb4",
 }
 `;
 
@@ -61,6 +77,14 @@ exports[`noir (dark jazz, spec) > canary 1`] = `
   "bpm": 73,
   "code": "2200-0000-0000-F6WS",
   "fingerprint": "c68cda8f",
+}
+`;
+
+exports[`outrun > canary 1`] = `
+{
+  "bpm": 124,
+  "code": "2R00-0000-0000-0WPD",
+  "fingerprint": "ba162f08",
 }
 `;
 

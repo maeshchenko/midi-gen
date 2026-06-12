@@ -1,4 +1,4 @@
-import { PPQ, type NoteEvent } from '../types';
+import { PPQ, sectionKey, type NoteEvent } from '../types';
 import type { GenContext, PartGenerator } from '../genres/types';
 import type { Rng } from '../prng';
 import type { Chord } from '../theory/chords';
@@ -141,7 +141,7 @@ export const genMelody: PartGenerator = (ctx) => {
     const sectionStart = section.startBar * ctx.barTicks;
     const sectionTicks = section.bars * ctx.barTicks;
 
-    const cached = cache.get(section.name);
+    const cached = cache.get(sectionKey(section));
     if (cached) {
       notes.push(...cached.map((n) => ({ ...n, start: n.start + sectionStart })));
       continue;
@@ -181,7 +181,7 @@ export const genMelody: PartGenerator = (ctx) => {
       n.dur = Math.min(n.dur, sectionStart + sectionTicks - n.start);
     }
 
-    cache.set(section.name, clipped.map((n) => ({ ...n, start: n.start - sectionStart })));
+    cache.set(sectionKey(section), clipped.map((n) => ({ ...n, start: n.start - sectionStart })));
     notes.push(...clipped);
   }
 

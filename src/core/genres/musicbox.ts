@@ -1,4 +1,4 @@
-import { type NoteEvent, PPQ } from '../types';
+import { type NoteEvent, PPQ, sectionKey } from '../types';
 import type { GenContext, GenreConfig, PartGenerator, Weighted } from './types';
 import type { Rng } from '../prng';
 import type { Chord } from '../theory/chords';
@@ -116,14 +116,14 @@ const genMusicboxLead: PartGenerator = (ctx) => {
     const sectionStart = section.startBar * ctx.barTicks;
     const sectionEnd = sectionStart + section.bars * ctx.barTicks;
 
-    let phrases = cache.get(section.name);
+    let phrases = cache.get(sectionKey(section));
     if (!phrases) {
       const chords = Array.from({ length: PHRASE_BARS }, (_, bar) =>
         ctx.chordAt(sectionStart + bar * ctx.barTicks),
       );
       const state = { pitch: Math.round((lo + hi) / 2) };
       phrases = { a: buildPhrase(rng, ctx, chords, state), b: buildPhrase(rng, ctx, chords, state) };
-      cache.set(section.name, phrases);
+      cache.set(sectionKey(section), phrases);
     }
 
     const count = Math.ceil(section.bars / PHRASE_BARS);

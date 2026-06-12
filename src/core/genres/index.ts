@@ -11,6 +11,9 @@ import { NIGHTCORE } from './nightcore';
 import { PHONK } from './phonk';
 import { TUNE } from './tune';
 import { MUSICBOX } from './musicbox';
+import { EUROBEAT } from './eurobeat';
+import { OUTRUN } from './outrun';
+import { GRIMERUN } from './grimerun';
 
 /**
  * Implemented genres. ('phonk' is the third drift-phonk attempt, built to the
@@ -28,6 +31,9 @@ export const GENRES: Partial<Record<GenreId, GenreConfig>> = {
   nightcore: NIGHTCORE,
   tune: TUNE,
   musicbox: MUSICBOX,
+  eurobeat: EUROBEAT,
+  outrun: OUTRUN,
+  grimerun: GRIMERUN,
 };
 
 export function getGenre(id: GenreId): GenreConfig {

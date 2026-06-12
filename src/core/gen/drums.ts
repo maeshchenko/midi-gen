@@ -1,4 +1,4 @@
-import { DRUM_CHANNEL, type NoteEvent } from '../types';
+import { DRUM_CHANNEL, sectionKey, type NoteEvent } from '../types';
 import type { PartGenerator, StepPattern } from '../genres/types';
 
 export const GM_DRUMS = {
@@ -59,10 +59,10 @@ export const genDrums: PartGenerator = (ctx) => {
   const notes: NoteEvent[] = [];
 
   for (const section of ctx.sections) {
-    let pattern = patternByName.get(section.name);
+    let pattern = patternByName.get(sectionKey(section));
     if (!pattern) {
       pattern = rng.weighted(ctx.cfg.drums.patterns);
-      patternByName.set(section.name, pattern);
+      patternByName.set(sectionKey(section), pattern);
     }
 
     // Crash marks every section start.

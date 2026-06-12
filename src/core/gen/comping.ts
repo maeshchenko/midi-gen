@@ -1,4 +1,4 @@
-import { PPQ, type NoteEvent } from '../types';
+import { PPQ, sectionKey, type NoteEvent } from '../types';
 import type { ArpPattern, PartGenerator } from '../genres/types';
 import { closeVoicing } from '../theory/chords';
 
@@ -63,7 +63,7 @@ export const genTrackerArp: PartGenerator = (ctx) => {
   for (const section of ctx.sections) {
     const s0 = section.startBar * ctx.barTicks;
     const s1 = s0 + section.bars * ctx.barTicks;
-    const pattern = patternFor(section.name);
+    const pattern = patternFor(sectionKey(section));
 
     for (const span of ctx.chords) {
       if (span.start < s0 || span.start >= s1) continue;

@@ -43,6 +43,9 @@ describe('track titles', () => {
       nightcore: '1d6ebf7b',
       tune: '8eaef612',
       musicbox: '1cc23708',
+      eurobeat: '11fb4fc0', // re-pinned 2026-06-12: outrun-style game arc (deliberate re-gen)
+      outrun: '9fff368f',
+      grimerun: '49b48b52',
     };
     for (const genre of GENRE_IDS) {
       const fp = fnv1a32(JSON.stringify(generate({ genre, seed: 12345n }).tracks)).toString(16);
