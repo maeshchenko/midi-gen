@@ -207,10 +207,14 @@ function s808(ctx: GenContext): NoteEvent[] {
     [0, 1.75, 3],
     [0, 3.5],
     [0, 2, 3.5],
+    [0, 0.75, 3],
+    [0, 2, 2.75],
   ];
   const notes: NoteEvent[] = [];
 
-  for (const span of ctx.chords) {
+  for (let si = 0; si < ctx.chords.length; si++) {
+    const span = ctx.chords[si]!;
+    const next: ChordSpan | undefined = ctx.chords[si + 1];
     const root = placeInRegister(span.chord.root, lo, hi);
     const fifthPc = span.chord.pitchClasses[2] ?? span.chord.root;
     const bars = Math.ceil(span.dur / ctx.barTicks);
@@ -219,6 +223,7 @@ function s808(ctx: GenContext): NoteEvent[] {
       const barStart = span.start + bar * ctx.barTicks;
       if (barStart >= span.start + span.dur) break;
       const hits = rng.pick(hitPatterns);
+      const lastBarOfSpan = barStart + ctx.barTicks >= span.start + span.dur;
 
       for (let h = 0; h < hits.length; h++) {
         const start = barStart + Math.round(hits[h]! * ctx.beatTicks);
@@ -229,6 +234,12 @@ function s808(ctx: GenContext): NoteEvent[] {
         let pitch = root;
         if (h > 0 && rng.chance(0.18)) pitch = placeInRegister(fifthPc, lo, hi);
         else if (h > 0 && rng.chance(0.12)) pitch = root + 12 <= hi ? root + 12 : root;
+        else if (h > 0 && root - 12 >= lo && rng.chance(0.1)) pitch = root - 12; // sub drop
+        // Anticipate the chord change: the glide lands on the new root early.
+        const isLastHit = h === hits.length - 1;
+        if (isLastHit && lastBarOfSpan && next && next.chord.root !== span.chord.root && rng.chance(0.3)) {
+          pitch = placeInRegister(next.chord.root, lo, hi);
+        }
 
         notes.push({
           pitch,
