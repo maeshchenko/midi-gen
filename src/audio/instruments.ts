@@ -579,6 +579,8 @@ export interface Ensemble {
   voices: Voice[];
   /** Section-driven FX moves (phonk filter sweeps) — player schedules these. */
   automations: EnsembleAutomation[];
+  /** Resolves when async FX (reverb IR generation) are ready — offline render must await this. */
+  ready: Promise<unknown>;
   dispose(): void;
 }
 
@@ -701,9 +703,14 @@ export function buildEnsemble(song: Song): Ensemble {
       : voices[song.tracks.findIndex((t) => t.role === target)]?.cutoff;
   const automations = spec ? buildFilterAutomations(song, cutoffOf(spec.target)) : [];
 
+  const ready = Promise.all(
+    fx.filter((n): n is Tone.Reverb => n instanceof Tone.Reverb).map((n) => n.ready),
+  );
+
   return {
     voices,
     automations,
+    ready,
     dispose: () => {
       for (const v of voices) v.dispose();
       for (const x of extras) x.dispose();

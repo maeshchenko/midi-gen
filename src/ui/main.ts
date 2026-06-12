@@ -1,7 +1,8 @@
 import './styles.css';
-import { CodeError, generate, listGenres } from '../core';
+import { CodeError, generate, listGenres, songToMidi } from '../core';
 import type { GenreId, Song } from '../core/types';
 import { createPlayer, type Player } from '../audio/player';
+import { renderToMp3, renderToWav } from '../audio/export';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const MODE_NAMES: Record<string, string> = {
@@ -47,6 +48,13 @@ app.innerHTML = `
       <label class="loop-label"><input type="checkbox" id="loop" checked /> LOOP</label>
     </div>
 
+    <div class="row transport">
+      <button id="save-mid" disabled>SAVE .MID</button>
+      <button id="save-wav" disabled>SAVE .WAV</button>
+      <button id="save-mp3" disabled>SAVE .MP3</button>
+    </div>
+    <p class="code-hint" id="export-status"></p>
+
     <p class="footer">midi-gen v0.1 · greets to razor 1911</p>
   </div>
 `;
@@ -64,6 +72,10 @@ const el = {
   play: document.querySelector<HTMLButtonElement>('#play')!,
   stop: document.querySelector<HTMLButtonElement>('#stop')!,
   loop: document.querySelector<HTMLInputElement>('#loop')!,
+  saveMid: document.querySelector<HTMLButtonElement>('#save-mid')!,
+  saveWav: document.querySelector<HTMLButtonElement>('#save-wav')!,
+  saveMp3: document.querySelector<HTMLButtonElement>('#save-mp3')!,
+  exportStatus: document.querySelector<HTMLParagraphElement>('#export-status')!,
 };
 
 for (const g of listGenres()) {
@@ -85,9 +97,36 @@ function setSong(next: Song): void {
   el.info.textContent = `${next.bpm} BPM · ${NOTE_NAMES[next.key.tonic]} ${MODE_NAMES[next.key.mode] ?? next.key.mode} · ${Math.round((next.durationTicks / 480) * (60 / next.bpm))}s`;
   el.play.disabled = false;
   el.stop.disabled = true;
+  el.saveMid.disabled = false;
+  el.saveWav.disabled = false;
+  el.saveMp3.disabled = false;
+  el.exportStatus.textContent = '';
   el.error.textContent = '';
   el.progress.style.width = '0%';
   history.replaceState(null, '', `?code=${next.code}`);
+}
+
+function download(blob: Blob, ext: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${song!.genre}-${song!.code}.${ext}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  const kb = blob.size / 1024;
+  el.exportStatus.textContent = `saved .${ext} · ${kb > 999 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`}`;
+}
+
+async function runExport(button: HTMLButtonElement, ext: string, make: () => Promise<Blob>): Promise<void> {
+  if (!song) return;
+  button.disabled = true;
+  el.exportStatus.textContent = `rendering .${ext}…`;
+  try {
+    download(await make(), ext);
+  } catch (err) {
+    el.exportStatus.textContent = `export failed: ${String(err)}`;
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function tickProgress(): void {
@@ -155,6 +194,26 @@ el.stop.addEventListener('click', () => {
   el.play.disabled = false;
   el.stop.disabled = true;
   el.progress.style.width = '0%';
+});
+
+el.saveMid.addEventListener('click', () => {
+  void runExport(el.saveMid, 'mid', () =>
+    Promise.resolve(new Blob([songToMidi(song!).buffer as ArrayBuffer], { type: 'audio/midi' })),
+  );
+});
+
+el.saveWav.addEventListener('click', () => {
+  void runExport(el.saveWav, 'wav', () => renderToWav(song!));
+});
+
+el.saveMp3.addEventListener('click', () => {
+  void runExport(el.saveMp3, 'mp3', () =>
+    renderToMp3(song!, {
+      onProgress: (v) => {
+        el.exportStatus.textContent = v < 0.4 ? 'rendering .mp3…' : `encoding .mp3… ${Math.round(v * 100)}%`;
+      },
+    }),
+  );
 });
 
 // Deep link: ?code=XXXX-XXXX-XXXX-XXXX (no autoplay — browsers block it anyway).

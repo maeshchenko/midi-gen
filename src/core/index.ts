@@ -14,6 +14,7 @@ export {
   CODE_VERSION,
   type DecodedCode,
 } from './code';
+export { songToMidi } from './midi';
 export { listGenres, getGenre, type GenreInfo } from './genres';
 export { GENRE_IDS, PPQ, DRUM_CHANNEL } from './types';
 export type { GenreId, Mode, NoteEvent, Section, Song, Track, TrackRole } from './types';
