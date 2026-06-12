@@ -2,7 +2,7 @@
 
 Процедурный генератор зацикленной музыки в стиле keygen-эпохи. Выбираешь жанр — получаешь уникальный трек и серийный код вида `2001-4D2P-F2DB-SQJM`. Код полностью заменяет файл: любой, у кого он есть, восстанавливает трек нота-в-ноту — без базы данных и без сети. Все треки — бесшовные лупы.
 
-**9 жанров:** Classic Keygen · Grime · Drift Phonk · Noir (dark jazz) · Anime Opening · Blues · Military Parade · Dark Academia · Nightcore.
+**11 жанров:** Classic Keygen · Grime · Drift Phonk · Noir (dark jazz) · Anime Opening · Blues · Military Parade · Dark Academia · Nightcore · Tune · Music Box.
 
 Звук синтезируется в браузере (Tone.js), сэмплы не используются. Экспорт: `.mid`, `.wav`, `.mp3`.
 

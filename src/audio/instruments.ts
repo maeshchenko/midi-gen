@@ -211,6 +211,28 @@ function makeUprightBass(out: Tone.ToneAudioNode): Voice {
   };
 }
 
+/** GM 10: plucked steel comb — glassy bell attack, no sustain, long undamped ring. */
+function makeMusicBox(out: Tone.ToneAudioNode): Voice {
+  const synth = new Tone.PolySynth(Tone.FMSynth, {
+    harmonicity: 5,
+    modulationIndex: 9,
+    envelope: { attack: 0.002, decay: 1.8, sustain: 0, release: 1.2 },
+    modulationEnvelope: { attack: 0.001, decay: 0.35, sustain: 0, release: 0.2 },
+  });
+  synth.volume.value = -10;
+  const shimmer = new Tone.Reverb({ decay: 1.6, wet: 0.22 });
+  synth.chain(shimmer, out);
+  return {
+    // Envelope has no sustain — the tine rings by itself; ignore short durs.
+    trigger: (p, t, d, v) => synth.triggerAttackRelease(midiHz(p), Math.max(1.2, d), t, v),
+    ready: shimmer.ready,
+    dispose: () => {
+      synth.dispose();
+      shimmer.dispose();
+    },
+  };
+}
+
 function makeVibraphone(out: Tone.ToneAudioNode): Voice {
   const synth = new Tone.PolySynth(Tone.FMSynth, {
     harmonicity: 4,
@@ -628,6 +650,8 @@ function voiceForTrack(track: Track, bpm: number, out: Tone.ToneAudioNode): Voic
       return makeMutedTrumpet(out);
     case 32:
       return makeUprightBass(out);
+    case 10:
+      return makeMusicBox(out);
     case 11:
       return makeVibraphone(out);
     case 89:
@@ -706,6 +730,8 @@ function masterFx(genre: Song['genre']): Tone.ToneAudioNode[] {
       return [new Tone.Reverb({ decay: 1.0, wet: 0.2 })]; // parade square air
     case 'darkacademia':
       return [new Tone.Reverb({ decay: 2.4, wet: 0.3 })]; // stone hall
+    case 'musicbox':
+      return [new Tone.Reverb({ decay: 2.2, wet: 0.28 }), new Tone.Filter(250, 'highpass')]; // tiny box in a quiet room
     default:
       return [];
   }

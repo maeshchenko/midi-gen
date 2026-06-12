@@ -8,6 +8,8 @@ export const GENRE_IDS = [
   'darkacademia',
   'grime',
   'nightcore',
+  'tune',
+  'musicbox',
 ] as const;
 
 export type GenreId = (typeof GENRE_IDS)[number];

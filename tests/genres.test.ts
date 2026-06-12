@@ -33,6 +33,115 @@ describe('genre registry', () => {
       expect(ids).toContain(id);
     }
     expect(ids).toContain('phonk'); // drift phonk v3 (spec) — back since 2026-06-12
+    expect(ids).toContain('tune');
+    expect(ids).toContain('musicbox');
+  });
+});
+
+describe('musicbox', () => {
+  const song = generate({ genre: 'musicbox', seed: 0xb0c5n });
+  const barTicks = 3 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('3/4 waltz, 66–92 BPM', () => {
+    expect(song.timeSig).toEqual([3, 4]);
+    expect(song.durationTicks % barTicks).toBe(0);
+    expect(song.bpm).toBeGreaterThanOrEqual(66);
+    expect(song.bpm).toBeLessThanOrEqual(92);
+  });
+
+  it('only two tracks, both GM 10 — the comb has no bass and no drums', () => {
+    expect(song.tracks.length).toBe(2);
+    expect(song.tracks.find((t) => t.role === 'drums')).toBeUndefined();
+    expect(song.tracks.find((t) => t.role === 'bass')).toBeUndefined();
+    for (const t of song.tracks) expect(t.program).toBe(10);
+  });
+
+  it('melody on the high tines, accompaniment below', () => {
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    for (const n of lead.notes) {
+      expect(n.pitch).toBeGreaterThanOrEqual(72);
+      expect(n.pitch).toBeLessThanOrEqual(96);
+    }
+    const accomp = song.tracks.find((t) => t.role === 'chords')!;
+    for (const n of accomp.notes) {
+      expect(n.pitch).toBeLessThanOrEqual(76);
+    }
+  });
+
+  it('flat mechanical velocities', () => {
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    const vels = lead.notes.map((n) => n.vel);
+    const mean = vels.reduce((s, v) => s + v, 0) / vels.length;
+    const sd = Math.sqrt(vels.reduce((s, v) => s + (v - mean) ** 2, 0) / vels.length);
+    expect(sd).toBeLessThan(8);
+  });
+
+  it('undamped: notes ring past the next onset', () => {
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    const avgDur = lead.notes.reduce((s, n) => s + n.dur, 0) / lead.notes.length;
+    expect(avgDur).toBeGreaterThan(400);
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});
+
+describe('tune (naive loop)', () => {
+  const song = generate({ genre: 'tune', seed: 0x51e913n });
+  const barTicks = 4 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('138–152 BPM, natural minor, no swing', () => {
+    expect(song.bpm).toBeGreaterThanOrEqual(138);
+    expect(song.bpm).toBeLessThanOrEqual(152);
+    expect(song.key.mode).toBe('naturalMinor');
+    expect(song.swing).toBe(0);
+  });
+
+  it('square lead on a strict eighth grid, within register', () => {
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    expect(lead.program).toBe(80);
+    for (const n of lead.notes) {
+      expect(n.start % 240).toBe(0); // timingTicks 0 + swing 0 → machine grid
+      expect(n.pitch).toBeGreaterThanOrEqual(62);
+      expect(n.pitch).toBeLessThanOrEqual(86);
+    }
+  });
+
+  it('one motif loops: rhythm repeats every 2 bars', () => {
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    const positions = new Set(lead.notes.map((n) => n.start % (2 * barTicks)));
+    expect(positions.size).toBeLessThanOrEqual(16); // ≤ 8 onsets per bar, same every pair
+  });
+
+  it('bass: long sustained roots', () => {
+    const bass = song.tracks.find((t) => t.role === 'bass')!;
+    const avgDur = bass.notes.reduce((s, n) => s + n.dur, 0) / bass.notes.length;
+    expect(avgDur).toBeGreaterThan(700); // half-bar sustains
+  });
+
+  it('drums: hats (and maybe a kick), nothing else — no crashes, no fills', () => {
+    const drums = song.tracks.find((t) => t.role === 'drums')!;
+    for (const n of drums.notes) {
+      expect([36, 42]).toContain(n.pitch);
+    }
+    const hats = drums.notes.filter((n) => n.pitch === 42);
+    const bars = song.durationTicks / barTicks;
+    expect(hats.length).toBe(bars * 4); // every offbeat eighth, every bar
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
   });
 });
 

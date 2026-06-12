@@ -9,6 +9,8 @@ import { MILITARY } from './military';
 import { DARKACADEMIA } from './darkacademia';
 import { NIGHTCORE } from './nightcore';
 import { PHONK } from './phonk';
+import { TUNE } from './tune';
+import { MUSICBOX } from './musicbox';
 
 /**
  * Implemented genres. ('phonk' is the third drift-phonk attempt, built to the
@@ -24,6 +26,8 @@ export const GENRES: Partial<Record<GenreId, GenreConfig>> = {
   military: MILITARY,
   darkacademia: DARKACADEMIA,
   nightcore: NIGHTCORE,
+  tune: TUNE,
+  musicbox: MUSICBOX,
 };
 
 export function getGenre(id: GenreId): GenreConfig {
