@@ -60,6 +60,6 @@ exports[`phonk (drift, spec v3) > canary 1`] = `
 {
   "bpm": 127,
   "code": "2600-0000-0391-YWVG",
-  "fingerprint": "b96d87a1",
+  "fingerprint": "c0d490d5",
 }
 `;

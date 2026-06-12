@@ -110,26 +110,36 @@ const genPhonkDrums: PartGenerator = (ctx) => {
 };
 
 /**
- * 808 bass: duplicates the kick verbatim — monolithic foundation, no wobble.
- * Near-legato durations feed the synth's portamento (the glide); the last
- * kick of every 8-bar square jumps an octave up, glide on.
+ * 808 bass: duplicates the kick rhythm verbatim (the lock is law). Downbeats
+ * hold the root; mid-bar kicks occasionally lean onto the fifth or the
+ * (phrygian) second — near-legato durations feed the synth's portamento, so
+ * every move is a glide, not a jump. The last kick of every 8-bar square
+ * still slides an octave up.
  */
 const genPhonkBass: PartGenerator = (ctx) => {
   const inst = ctx.cfg.instruments.bass;
   if (!inst) return null;
+  const rng = ctx.rng('bass');
   const kicks = (ctx.shared.get('phonk.kicks') as number[] | undefined) ?? [];
   const [lo, hi] = ctx.cfg.bass.register;
+  const second = SCALE_INTERVALS[ctx.key.mode][1] ?? 1;
   const notes: NoteEvent[] = [];
 
   for (let i = 0; i < kicks.length; i++) {
     const tick = kicks[i]!;
     const next = kicks[i + 1];
-    let pitch = placeLow(ctx.chordAt(tick).root, lo, hi);
+    const root = ctx.chordAt(tick).root;
+    let pitch = placeLow(root, lo, hi);
 
     const barIdx = Math.floor(tick / ctx.barTicks);
     const lastOfSquare =
       barIdx % 8 === 7 && (next === undefined || Math.floor(next / ctx.barTicks) !== barIdx);
-    if (lastOfSquare && pitch + 12 <= hi + 12) pitch += 12;
+    if (lastOfSquare && pitch + 12 <= hi + 12) {
+      pitch += 12;
+    } else if (tick % ctx.barTicks !== 0 && rng.chance(0.3)) {
+      // Mid-bar lean: glide onto the fifth (weight) or the second (menace).
+      pitch = placeLow(mod12(root + (rng.chance(0.5) ? 7 : second)), lo, hi);
+    }
 
     const dur = next !== undefined ? Math.min(next - tick - 5, ctx.barTicks) : ctx.beatTicks * 2;
     notes.push({ pitch, start: tick, dur: Math.max(120, dur), vel: 115 });
