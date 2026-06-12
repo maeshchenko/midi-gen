@@ -217,6 +217,20 @@ const genKeygenLead: PartGenerator = (ctx) => {
 export const KEYGEN: GenreConfig = {
   id: 'keygen',
   name: 'Classic Keygen',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj}_{noun}.{ext}' },
+      { w: 2, v: '{adj} {noun} [{crew}]' },
+      { w: 2, v: '{noun}_{noun2}.{ext}' },
+      { w: 1, v: '[{crew}] {adj} {noun}' },
+    ],
+    words: {
+      adj: ['NEON', 'SERIAL', 'CRACKED', 'BINARY', 'PHANTOM', 'TURBO', 'CHROME', 'PIXEL', 'ACID', 'RADICAL', 'QUANTUM', 'STATIC', 'MIDNIGHT', 'ELECTRIC', 'DIGITAL', 'GHOST'],
+      noun: ['OVERRIDE', 'DREAMS', 'PROTOCOL', 'KEYGEN', 'CIRCUIT', 'INJECTION', 'CASCADE', 'FIREWALL', 'PAYLOAD', 'SECTOR', 'MAINFRAME', 'UNLOCKER', 'RIPPER', 'VECTOR', 'CRYPT', 'LOADER'],
+      crew: ['rZr', 'CORE', 'FFF', 'SKYLINE', 'PARADOX', 'DEVIANCE', 'MYTH', 'ECHO'],
+      ext: ['EXE', 'NFO', 'DLL', 'SYS', 'ZIP'],
+    },
+  },
   bpm: [140, 180],
   timeSig: [4, 4],
   keys: [

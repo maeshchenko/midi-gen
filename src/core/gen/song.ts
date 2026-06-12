@@ -4,6 +4,7 @@ import { streamFor, type Rng } from '../prng';
 import { getGenre } from '../genres';
 import type { GenContext } from '../genres/types';
 import { buildForm } from './form';
+import { buildTitle } from './title';
 import { buildHarmony, makeChordLookup } from './harmony';
 import { genDrums } from './drums';
 import { genBass } from './bass';
@@ -53,6 +54,8 @@ export function generate(opts: GenerateOptions = {}): Song {
       ? cfg.swing[0]
       : cfg.swing[0] + global.next() * (cfg.swing[1] - cfg.swing[0]);
 
+  const title = buildTitle(cfg.naming, rng('title'));
+
   const timeSig = cfg.timeSig as [number, number];
   const beatTicks = (PPQ * 4) / timeSig[1];
   const barTicks = beatTicks * timeSig[0];
@@ -99,6 +102,7 @@ export function generate(opts: GenerateOptions = {}): Song {
 
   return {
     code,
+    title,
     version: 1,
     genre,
     seed,

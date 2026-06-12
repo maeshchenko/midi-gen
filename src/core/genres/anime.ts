@@ -24,6 +24,18 @@ const POP_DRIVING: StepPattern = {
 export const ANIME: GenreConfig = {
   id: 'anime',
   name: 'Anime Opening',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj} {noun}' },
+      { w: 1, v: 'Heart of the {adj} {noun}' },
+      { w: 1, v: '{noun} Beyond the {noun2}' },
+      { w: 1, v: 'My {adj} {noun}' },
+    ],
+    words: {
+      adj: ['Sakura', 'Neon', 'Crimson', 'Shining', 'Infinite', 'Starlit', 'Burning', 'Crystal', 'Midnight', 'Eternal'],
+      noun: ['Overdrive', 'Horizon', 'Heartbeat', 'Wings', 'Promise', 'Adventure', 'Tomorrow', 'Galaxy', 'Memories', 'Destiny'],
+    },
+  },
   bpm: [128, 160],
   timeSig: [4, 4],
   keys: [

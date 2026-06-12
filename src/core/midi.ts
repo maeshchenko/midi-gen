@@ -7,7 +7,7 @@ import { PPQ, type Song } from './types';
  */
 export function songToMidi(song: Song): Uint8Array {
   const midi = new Midi();
-  midi.header.name = `midi-gen ${song.code}`;
+  midi.header.name = `${song.title} · ${song.code}`;
   midi.header.tempos.push({ ticks: 0, bpm: song.bpm });
   midi.header.timeSignatures.push({
     ticks: 0,

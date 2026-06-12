@@ -8,6 +8,16 @@ export interface Weighted<T> {
   v: T;
 }
 
+/**
+ * Genre-flavored track naming. Patterns hold `{slot}` tokens resolved from
+ * `words`; a trailing digit ("{noun2}") reuses the bank but avoids repeating
+ * a word already picked from it. Style (caps, ♥, .EXE) is encoded literally.
+ */
+export interface NamingSpec {
+  patterns: Weighted<string>[];
+  words: Record<string, readonly string[]>;
+}
+
 export interface SectionSpec {
   name: string;
   bars: number;
@@ -73,6 +83,8 @@ export type BassStyle =
 export interface GenreConfig {
   id: GenreId;
   name: string;
+  /** Track-title generator data — every genre must define its own flavor. */
+  naming: NamingSpec;
   /** Kept generatable (codes keep working) but excluded from listGenres(). */
   hidden?: boolean;
   bpm: [number, number];

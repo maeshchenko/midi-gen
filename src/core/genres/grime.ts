@@ -156,6 +156,17 @@ const genGrimeLead: PartGenerator = (ctx) => {
 export const GRIME: GenreConfig = {
   id: 'grime',
   name: 'Grime',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj} {noun}' },
+      { w: 1, v: '{adj} {noun} (VIP)' },
+      { w: 1, v: '140 {noun}' },
+    ],
+    words: {
+      adj: ['Tower Block', 'Roadside', 'Grey Estate', 'Pirate', 'Concrete', 'Endz', 'Low Battery', 'Night Bus', 'Corner Shop', 'Manor'],
+      noun: ['Riddim', 'Heat', 'Cypher', 'Static', 'Dubplate', 'Skank', 'Pressure', 'Bars', 'Signal', 'Wheel-Up'],
+    },
+  },
   bpm: [130, 145],
   timeSig: [4, 4],
   keys: [

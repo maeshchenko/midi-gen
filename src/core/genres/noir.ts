@@ -306,6 +306,21 @@ const genNoirLead: PartGenerator = (ctx) => {
 export const NOIR: GenreConfig = {
   id: 'noir',
   name: 'Noir',
+  naming: {
+    patterns: [
+      { w: 2, v: '{adj} {noun}' },
+      { w: 2, v: 'The {adj} {noun}' },
+      { w: 2, v: '{noun} in {place}' },
+      { w: 1, v: 'Last Train to {place}' },
+      { w: 1, v: 'Smoke over {place}' },
+      { w: 1, v: '{noun} & {noun2}' },
+    ],
+    words: {
+      adj: ['Smoky', 'Velvet', 'Midnight', 'Crooked', 'Hollow', 'Bitter', 'Pale', 'Rain-Slick', 'Borrowed', 'Lonesome', 'Faded', 'Sleepless'],
+      noun: ['Alley', 'Dame', 'Trenchcoat', 'Cigarette', 'Streetlight', 'Saxophone', 'Motel', 'Verdict', 'Alibi', 'Goodbye', 'Whiskey', 'Shadow'],
+      place: ['Nowhere', 'the Docks', 'Room 9', 'the Last Bar', 'Union Station', 'the Rain', 'Downtown', 'the Morgue'],
+    },
+  },
   bpm: [60, 80],
   timeSig: [4, 4],
   keys: [

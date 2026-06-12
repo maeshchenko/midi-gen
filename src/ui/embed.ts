@@ -21,7 +21,7 @@ export function renderEmbed(app: HTMLElement, code: string | null): void {
     <div class="embed-panel">
       <button id="e-play" class="primary embed-play" title="play / stop">▶</button>
       <div class="embed-mid">
-        <div class="embed-code">${song.code}</div>
+        <div class="embed-code">${song.title} · ${song.code}</div>
         <div class="progress"><div class="progress-fill" id="e-progress"></div></div>
       </div>
       <a class="embed-brand" href="${location.pathname}?code=${song.code}" target="_blank" rel="noopener">midi&#8209;gen</a>

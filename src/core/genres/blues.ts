@@ -24,6 +24,18 @@ const SHUFFLE_BUSY: StepPattern = {
 export const BLUES: GenreConfig = {
   id: 'blues',
   name: 'Blues',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj} {noun} Blues' },
+      { w: 1, v: '{noun} Blues' },
+      { w: 1, v: '{adj} {noun} Boogie' },
+      { w: 1, v: 'Blues for a {adj} {noun}' },
+    ],
+    words: {
+      adj: ['Dusty', 'Empty', 'Broken', 'Lonesome', 'Greyhound', 'Crossroad', 'Muddy', 'Bourbon', 'Rusty', 'Delta'],
+      noun: ['Road', 'Bottle', 'Heart', 'Pocket', 'Train', "Mornin'", 'Levee', 'Porch', 'Dime', 'Hound'],
+    },
+  },
   bpm: [80, 116],
   timeSig: [4, 4],
   keys: [

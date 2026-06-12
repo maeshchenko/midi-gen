@@ -132,6 +132,17 @@ export const TUNE: GenreConfig = {
   id: 'tune',
   hidden: true, // internal — out of listGenres() and docs by user request
   name: 'Tune',
+  naming: {
+    patterns: [
+      { w: 2, v: 'Little {noun} No. {num}' },
+      { w: 1, v: '{noun} No. {num}' },
+      { w: 1, v: 'Tiny {noun}' },
+    ],
+    words: {
+      noun: ['Loop', 'Tune', 'Jingle', 'Melody', 'Ditty'],
+      num: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'],
+    },
+  },
   bpm: [138, 152],
   timeSig: [4, 4],
   keys: [

@@ -1,9 +1,11 @@
 import './styles.css';
-import { CodeError, generate, listGenres, songToMidi } from '../core';
+import { CodeError, generate, listGenres, nextSeed, songToMidi } from '../core';
 import type { GenreId, Song } from '../core/types';
 import { createPlayer, type Player } from '../audio/player';
 import { renderToMp3, renderToWav } from '../audio/export';
 import { createPianoRoll } from './pianoroll';
+import { createScope } from './scope';
+import { createHistory } from './history';
 import { renderEmbed } from './embed';
 
 // ?embed=1 → compact iframe player instead of the full app.
@@ -41,6 +43,7 @@ function initApp(): void {
       </div>
 
       <div class="code-box" id="code" title="click to copy">····-····-····-····</div>
+      <p class="track-title" id="title"></p>
       <p class="code-hint" id="code-hint">click code to copy</p>
 
       <div class="row">
@@ -52,12 +55,15 @@ function initApp(): void {
 
       <p class="info" id="info">press GENERATE</p>
       <canvas class="roll" id="roll"></canvas>
+      <canvas class="scope" id="scope"></canvas>
       <div class="progress"><div class="progress-fill" id="progress"></div></div>
 
       <div class="row transport">
         <button id="play" class="primary" disabled>▶ PLAY</button>
         <button id="stop" disabled>■ STOP</button>
+        <button id="next" disabled title="next track in the seed chain">⏭ NEXT</button>
         <label class="loop-label"><input type="checkbox" id="loop" checked /> LOOP</label>
+        <label class="loop-label" title="auto-advance to the next track"><input type="checkbox" id="radio" /> RADIO</label>
       </div>
 
       <div class="row transport">
@@ -68,6 +74,11 @@ function initApp(): void {
       </div>
       <p class="code-hint" id="export-status"></p>
 
+      <details class="history" id="history">
+        <summary>HISTORY (0)</summary>
+        <div class="history-list"></div>
+      </details>
+
       <p class="footer">midi-gen v0.1</p>
     </div>
   `;
@@ -76,6 +87,7 @@ function initApp(): void {
     genre: document.querySelector<HTMLSelectElement>('#genre')!,
     generate: document.querySelector<HTMLButtonElement>('#generate')!,
     code: document.querySelector<HTMLDivElement>('#code')!,
+    title: document.querySelector<HTMLParagraphElement>('#title')!,
     codeHint: document.querySelector<HTMLParagraphElement>('#code-hint')!,
     codeInput: document.querySelector<HTMLInputElement>('#code-input')!,
     load: document.querySelector<HTMLButtonElement>('#load')!,
@@ -84,16 +96,32 @@ function initApp(): void {
     progress: document.querySelector<HTMLDivElement>('#progress')!,
     play: document.querySelector<HTMLButtonElement>('#play')!,
     stop: document.querySelector<HTMLButtonElement>('#stop')!,
+    next: document.querySelector<HTMLButtonElement>('#next')!,
     loop: document.querySelector<HTMLInputElement>('#loop')!,
+    radio: document.querySelector<HTMLInputElement>('#radio')!,
     saveMid: document.querySelector<HTMLButtonElement>('#save-mid')!,
     saveWav: document.querySelector<HTMLButtonElement>('#save-wav')!,
     saveMp3: document.querySelector<HTMLButtonElement>('#save-mp3')!,
     exportStatus: document.querySelector<HTMLParagraphElement>('#export-status')!,
     embed: document.querySelector<HTMLButtonElement>('#embed')!,
     roll: document.querySelector<HTMLCanvasElement>('#roll')!,
+    scope: document.querySelector<HTMLCanvasElement>('#scope')!,
+    history: document.querySelector<HTMLDetailsElement>('#history')!,
   };
 
   const roll = createPianoRoll(el.roll);
+  const scope = createScope(el.scope);
+  scope.drawIdle();
+  const history = createHistory(el.history, {
+    onLoad(code) {
+      try {
+        setSong(generate({ code }));
+        el.genre.value = song!.genre;
+      } catch (e) {
+        el.error.textContent = e instanceof CodeError ? `BAD CODE: ${e.reason}` : String(e);
+      }
+    },
+  });
 
   for (const g of listGenres()) {
     const opt = document.createElement('option');
@@ -111,9 +139,11 @@ function initApp(): void {
     player = null;
     song = next;
     el.code.textContent = next.code;
+    el.title.textContent = next.title;
     el.info.textContent = `${next.bpm} BPM · ${NOTE_NAMES[next.key.tonic]} ${MODE_NAMES[next.key.mode] ?? next.key.mode} · ${Math.round((next.durationTicks / 480) * (60 / next.bpm))}s`;
     el.play.disabled = false;
     el.stop.disabled = true;
+    el.next.disabled = false;
     el.saveMid.disabled = false;
     el.saveWav.disabled = false;
     el.saveMp3.disabled = false;
@@ -122,13 +152,18 @@ function initApp(): void {
     el.error.textContent = '';
     el.progress.style.width = '0%';
     roll.setSong(next);
-    history.replaceState(null, '', `?code=${next.code}`);
+    history.add(next);
+    window.history.replaceState(null, '', `?code=${next.code}`);
+  }
+
+  function slug(s: string): string {
+    return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
   }
 
   function download(blob: Blob, ext: string): void {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `${song!.genre}-${song!.code}.${ext}`;
+    a.download = `${slug(song!.title) || song!.genre}-${song!.code}.${ext}`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     const kb = blob.size / 1024;
@@ -152,8 +187,16 @@ function initApp(): void {
     if (player?.isPlaying()) {
       el.progress.style.width = `${(player.positionSec() / player.durationSec) * 100}%`;
       roll.draw(player.positionSec());
+      scope.draw();
       rafId = requestAnimationFrame(tickProgress);
     }
+  }
+
+  // Radio: chain the next deterministic seed and keep playing.
+  function advance(): void {
+    if (!song) return;
+    setSong(generate({ genre: song.genre, seed: nextSeed(song.seed) }));
+    el.play.click();
   }
 
   el.generate.addEventListener('click', () => {
@@ -191,12 +234,19 @@ function initApp(): void {
     if (!player) {
       player = createPlayer(song, { loop: el.loop.checked });
       player.onEnded = () => {
+        // Defer out of Tone's event processing before dispose/transport.cancel.
+        if (el.radio.checked) {
+          queueMicrotask(advance);
+          return;
+        }
         el.stop.disabled = true;
         el.play.disabled = false;
         el.progress.style.width = '0%';
+        scope.drawIdle();
       };
     }
     void player.play().then(() => {
+      scope.arm();
       el.play.disabled = true;
       el.stop.disabled = false;
       cancelAnimationFrame(rafId);
@@ -205,7 +255,22 @@ function initApp(): void {
   });
 
   el.loop.addEventListener('change', () => {
+    if (el.loop.checked) el.radio.checked = false;
     player?.setLoop(el.loop.checked);
+  });
+
+  el.radio.addEventListener('change', () => {
+    if (el.radio.checked) {
+      el.loop.checked = false;
+      player?.setLoop(false);
+    }
+  });
+
+  el.next.addEventListener('click', () => {
+    if (!song) return;
+    const wasPlaying = player?.isPlaying() ?? false;
+    setSong(generate({ genre: song.genre, seed: nextSeed(song.seed) }));
+    if (wasPlaying) el.play.click();
   });
 
   el.stop.addEventListener('click', () => {
@@ -215,6 +280,7 @@ function initApp(): void {
     el.stop.disabled = true;
     el.progress.style.width = '0%';
     roll.draw(0);
+    scope.drawIdle();
   });
 
   // Space toggles play/stop (unless typing a code).

@@ -4,7 +4,7 @@ exports[`generate (keygen) > snapshot canary: fixed seed produces a pinned finge
 {
   "bpm": 177,
   "code": "2001-4D2P-F2DB-SQJM",
-  "fingerprint": "ddc7d500",
+  "fingerprint": "1ecc4407",
   "key": {
     "mode": "naturalMinor",
     "tonic": 9,

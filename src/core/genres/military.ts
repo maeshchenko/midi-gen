@@ -24,6 +24,18 @@ const PARADE_ROLLS: StepPattern = {
 export const MILITARY: GenreConfig = {
   id: 'military',
   name: 'Military Parade',
+  naming: {
+    patterns: [
+      { w: 3, v: 'March of the {adj} {noun}' },
+      { w: 2, v: 'Parade of the {adj} {noun}' },
+      { w: 2, v: '{adj} {noun} March' },
+      { w: 1, v: 'The {adj} {noun}' },
+    ],
+    words: {
+      adj: ['Iron', 'Scarlet', 'Granite', 'Northern', 'Unbroken', 'Thundering', 'Golden', 'Steadfast'],
+      noun: ['Column', 'Banner', 'Garrison', 'Bugle', 'Regiment', 'Bastion', 'Vanguard', 'Standard', 'Brigade', 'Cadence'],
+    },
+  },
   bpm: [108, 124],
   timeSig: [2, 4],
   keys: [

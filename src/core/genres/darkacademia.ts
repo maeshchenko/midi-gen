@@ -16,6 +16,18 @@ const NO_DRUMS: StepPattern = {
 export const DARKACADEMIA: GenreConfig = {
   id: 'darkacademia',
   name: 'Dark Academia',
+  naming: {
+    patterns: [
+      { w: 3, v: '{noun} for {obj}' },
+      { w: 2, v: '{noun} in {obj}' },
+      { w: 1, v: '{noun} No. {num}' },
+    ],
+    words: {
+      noun: ['Nocturne', 'Elegy', 'Étude', 'Requiem', 'Sonata', 'Prelude', 'Lament', 'Canon', 'Vespers', 'Madrigal'],
+      obj: ['Forgotten Letters', 'Burnt Manuscripts', 'Empty Lecture Halls', 'a Dead Language', 'October Rain', 'Candlelight', 'the Library Stairs', 'Pressed Violets', 'an Unfinished Thesis', 'Ivy and Ash'],
+      num: ['II', 'III', 'IV', 'VII', 'IX', 'XIII'],
+    },
+  },
   bpm: [72, 96],
   timeSig: [4, 4],
   keys: [

@@ -236,6 +236,18 @@ const genPhonkLead: PartGenerator = (ctx) => {
 export const PHONK: GenreConfig = {
   id: 'phonk',
   name: 'Drift Phonk',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj} {noun}' },
+      { w: 2, v: '{noun} × {noun2}' },
+      { w: 1, v: 'DEVIL IN THE {noun}' },
+      { w: 1, v: "{adj} {noun} '94" },
+    ],
+    words: {
+      adj: ['MEMPHIS', 'SMOKED', 'CURSED', 'DRIFTIN', 'COLD', 'SLOWED', 'HAUNTED', 'BLACKED', 'GRAVEYARD', 'MIDNIGHT'],
+      noun: ['TRUNK', '808', 'HEARSE', 'INTERIOR', 'PLAYA', 'CYPHER', 'SLAB', 'TINTS', 'SWITCHBLADE', 'PHONK'],
+    },
+  },
   bpm: [120, 135],
   timeSig: [4, 4],
   keys: [

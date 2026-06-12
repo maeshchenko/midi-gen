@@ -25,6 +25,18 @@ const EURO_DRIVE: StepPattern = {
 export const NIGHTCORE: GenreConfig = {
   id: 'nightcore',
   name: 'Nightcore',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj} {noun} ♥' },
+      { w: 2, v: '{adj} {noun}!!' },
+      { w: 1, v: '{noun} {noun2} ☆' },
+      { w: 1, v: '(sped up) {adj} {noun}' },
+    ],
+    words: {
+      adj: ['sweetheart', 'sugar', 'neon', 'moonlit', 'bubblegum', 'starry', 'midnight', 'glitter', 'cherry', 'dizzy'],
+      noun: ['overdrive', 'rush', 'heartbeat', 'confession', 'parade', 'daydream', 'spin', 'sparkle', 'crush', 'melody'],
+    },
+  },
   bpm: [160, 180],
   timeSig: [4, 4],
   keys: [

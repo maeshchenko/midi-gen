@@ -62,6 +62,11 @@ export interface Section {
 
 export interface Song {
   code: string;
+  /**
+   * Genre-flavored track name, deterministic from the code. Drawn from its
+   * own named PRNG stream — never affects the notes.
+   */
+  title: string;
   version: number;
   genre: GenreId;
   seed: bigint;

@@ -122,6 +122,15 @@ button.primary:hover {
   text-shadow: 0 0 10px rgba(93, 252, 112, 0.4);
 }
 
+.track-title {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: #9be89b;
+  min-height: 16px;
+}
+
 .code-hint {
   text-align: center;
   font-size: 10px;
@@ -142,6 +151,16 @@ button.primary:hover {
   display: block;
   width: 100%;
   height: 150px;
+  background: #060610;
+  border: 1px solid #3a3a5c;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.scope {
+  display: block;
+  width: 100%;
+  height: 48px;
   background: #060610;
   border: 1px solid #3a3a5c;
   border-radius: 4px;
@@ -241,6 +260,72 @@ body.embed-body {
   min-height: 13px;
   margin: 4px 0 0;
   text-align: center;
+}
+
+.history {
+  margin-top: 14px;
+  border: 1px solid #2a2a48;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.history summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: #7a7ab0;
+  letter-spacing: 1px;
+  user-select: none;
+}
+
+.history-list {
+  margin-top: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.history-star {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: #5c5c8a;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.history-star:hover {
+  background: none;
+  border: none;
+  color: #ffd75d;
+}
+
+.history-star.fav {
+  color: #ffd75d;
+}
+
+.history-code {
+  color: #5dfc70;
+  cursor: pointer;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.history-code:hover {
+  text-shadow: 0 0 8px rgba(93, 252, 112, 0.6);
+}
+
+.history-meta {
+  color: #5c5c8a;
+  font-size: 11px;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 .footer {

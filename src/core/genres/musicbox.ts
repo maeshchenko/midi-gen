@@ -207,6 +207,18 @@ const genMusicboxAccomp: PartGenerator = (ctx) => {
 export const MUSICBOX: GenreConfig = {
   id: 'musicbox',
   name: 'Music Box',
+  naming: {
+    patterns: [
+      { w: 3, v: '{adj} {noun}' },
+      { w: 1, v: '{noun} for a {adj} {obj}' },
+      { w: 1, v: 'Waltz for a {adj} {obj}' },
+    ],
+    words: {
+      adj: ['Clockwork', 'Paper', 'Porcelain', 'Winter', 'Tarnished', 'Moonlight', 'Attic', 'Snowglobe', 'Faded', 'Velvet'],
+      noun: ['Lullaby', 'Waltz', 'Carousel', 'Ballerina', 'Berceuse', 'Minuet', 'Reverie', 'Keepsake', 'Locket', 'Dream'],
+      obj: ['Moon', 'Ballerina', 'Music Box', 'Snow Queen', 'Sleeping Fox', 'Tin Soldier', 'Lost Button', 'Winter Garden'],
+    },
+  },
   bpm: [66, 92],
   timeSig: [3, 4],
   keys: [
