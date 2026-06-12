@@ -43,5 +43,7 @@ export interface GenreInfo {
 }
 
 export function listGenres(): GenreInfo[] {
-  return Object.values(GENRES).map((c) => ({ id: c.id, name: c.name, bpm: c.bpm }));
+  return Object.values(GENRES)
+    .filter((c) => !c.hidden)
+    .map((c) => ({ id: c.id, name: c.name, bpm: c.bpm }));
 }

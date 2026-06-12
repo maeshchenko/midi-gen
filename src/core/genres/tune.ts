@@ -130,6 +130,7 @@ const genTuneDrums: PartGenerator = (ctx) => {
 
 export const TUNE: GenreConfig = {
   id: 'tune',
+  hidden: true, // internal — out of listGenres() and docs by user request
   name: 'Tune',
   bpm: [138, 152],
   timeSig: [4, 4],

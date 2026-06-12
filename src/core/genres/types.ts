@@ -73,6 +73,8 @@ export type BassStyle =
 export interface GenreConfig {
   id: GenreId;
   name: string;
+  /** Kept generatable (codes keep working) but excluded from listGenres(). */
+  hidden?: boolean;
   bpm: [number, number];
   /** Bimodal tempo (shanson: lyrical 80–95 vs kabak 115–125). Overrides `bpm` when set. */
   bpmLanes?: Weighted<[number, number]>[];

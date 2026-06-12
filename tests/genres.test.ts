@@ -33,8 +33,8 @@ describe('genre registry', () => {
       expect(ids).toContain(id);
     }
     expect(ids).toContain('phonk'); // drift phonk v3 (spec) — back since 2026-06-12
-    expect(ids).toContain('tune');
     expect(ids).toContain('musicbox');
+    expect(ids).not.toContain('tune'); // hidden: generatable by id/code, not listed
   });
 });
 
