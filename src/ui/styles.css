@@ -181,6 +181,60 @@ button.primary:hover {
   accent-color: #5dfc70;
 }
 
+/* ?embed=1 — compact iframe player */
+body.embed-body {
+  display: block;
+  min-height: 0;
+  background: transparent;
+}
+
+.embed-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #14142a 0%, #0e0e1c 100%);
+  border: 1px solid #3a3a5c;
+  border-radius: 8px;
+}
+
+.embed-play {
+  min-width: 44px;
+  font-size: 15px;
+}
+
+.embed-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.embed-code {
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: #5dfc70;
+  margin-bottom: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.embed-brand {
+  color: #5c5c8a;
+  font-size: 11px;
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.embed-brand:hover {
+  color: #5dfc70;
+}
+
+.embed-error {
+  color: #e0506a;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+
 .error-msg {
   color: #e0506a;
   font-size: 11px;
@@ -195,24 +249,4 @@ button.primary:hover {
   font-size: 10px;
   color: #3c3c60;
   letter-spacing: 1px;
-}
-
-.marquee {
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.marquee span {
-  display: inline-block;
-  padding-left: 100%;
-  animation: scroll-greets 28s linear infinite;
-}
-
-@keyframes scroll-greets {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-100%);
-  }
 }

@@ -1,28 +1,85 @@
 # midi-gen
 
-Генератор MIDI-мелодий по жанрам в эстетике keygen-музыки. Каждая мелодия получает серийный код `XXXX-XXXX-XXXX-XXXX`, по которому она восстанавливается байт-в-байт — без базы данных. Экспорт в MIDI и MP3, headless-ядро для встраивания в игры.
+Процедурный генератор зацикленной музыки в стиле keygen-эпохи. Выбираешь жанр — получаешь уникальный трек и серийный код вида `2001-4D2P-F2DB-SQJM`. Код полностью заменяет файл: любой, у кого он есть, восстанавливает трек нота-в-ноту — без базы данных и без сети. Все треки — бесшовные лупы.
 
-Жанры: keygen, noir, anime, phonk, blues, military, dark academia.
+**9 жанров:** Classic Keygen · Grime · Drift Phonk · Noir (dark jazz) · Anime Opening · Blues · Military Parade · Dark Academia · Nightcore.
 
-## Как это работает
+Звук синтезируется в браузере (Tone.js), сэмплы не используются. Экспорт: `.mid`, `.wav`, `.mp3`.
 
-Код — упакованный сид детерминированного PRNG (Crockford Base32, 80 бит: версия + жанр + сид + CRC-8). Генерация — чистая функция `f(seed, genre) → Song`, поэтому код полностью заменяет хранение мелодии.
+## Запустить
 
-```ts
-import { generate } from './src/core'; // headless, без Tone/DOM
-const song = generate({ genre: 'phonk' });     // новая мелодия
-const same = generate({ code: song.code });    // та же — из кода
+```bash
+npm install
+npm run dev     # → http://localhost:5173
 ```
 
-## Команды
+GENERATE — новый трек · клик по коду — копировать · ввод кода + LOAD — восстановить · Space — play/stop · SAVE — экспорт.
 
-| команда | что |
+## Встроить плеер на свою страницу
+
+Кнопка **EMBED** в приложении копирует готовый сниппет:
+
+```html
+<iframe src="https://<хост>/midi-gen/?code=2001-4D2P-F2DB-SQJM&embed=1"
+        width="420" height="90" style="border:0;border-radius:8px"
+        loading="lazy" title="midi-gen player"></iframe>
+```
+
+Вставь в любой HTML — появится компактный плеер; звук стартует по клику (политика автоплея браузеров соблюдена).
+
+## Использовать в коде (игры, приложения)
+
+Ядро не зависит от Tone.js и DOM — работает в Node, воркерах, любом бандлере.
+
+```bash
+npm run build:lib   # → dist/core.js, dist/audio.js (ESM + типы)
+```
+
+```ts
+import { generate, songToMidi, nextSeed } from 'midi-gen/core';
+import { createPlayer } from 'midi-gen/audio'; // браузер; peer: tone
+
+// музыка уровня — в сейв кладём только код
+const song = generate({ genre: 'phonk' });
+save.musicCode = song.code;
+
+// после загрузки — тот же трек, нота в ноту
+const player = createPlayer(generate({ code: save.musicCode })); // loop по умолчанию
+await player.play();   // вызывать из обработчика клика (autoplay policy)
+player.stop();
+
+// бесконечный плейлист: детерминированная цепочка сидов
+const next = generate({ genre: 'phonk', seed: nextSeed(song.seed) });
+
+// или отдать ноты собственному движку
+const smf: Uint8Array = songToMidi(song); // стандартный MIDI-файл
+```
+
+### API ядра (`midi-gen/core`)
+
+| функция | описание |
 |---|---|
-| `npm run dev` | dev-сервер (Vite) |
-| `npm test` | тесты (vitest) |
-| `npm run typecheck` | tsc --noEmit |
-| `npm run build` | сборка |
+| `generate({ genre? \| seed? \| code? })` | трек (Song IR): треки → ноты `{pitch, start, dur, vel}` в тиках, PPQ 480 |
+| `decodeCode(code)` / `encodeCode(genre, seed)` | разбор/сборка серийника (CRC-8 ловит опечатки) |
+| `listGenres()` | реализованные жанры |
+| `songToMidi(song)` | `Uint8Array` со стандартным MIDI-файлом |
+| `nextSeed(seed)` | следующий сид цепочки |
 
-## Статус
+### `midi-gen/audio` (браузер)
 
-Фазы 0–1 готовы (PRNG, кодек серийника, музыкальная теория, тесты). План и архитектура — [PLAN.md](PLAN.md), правила для агентов — [AGENTS.md](AGENTS.md), история — [docs/CHANGELOG.md](docs/CHANGELOG.md).
+`createPlayer(song, {loop})` — live-плеер на Tone.js; `renderToWav(song)` — офлайн-рендер в WAV. MP3-экспорт есть только в приложении (его энкодер-воркер привязан к сборке Vite).
+
+### Пакетная генерация ассетов
+
+```bash
+node demo/generate-mid.mjs noir 10                # 10 .mid в demo/out/
+node demo/generate-mid.mjs 2001-4D2P-F2DB-SQJM    # восстановить по коду
+```
+
+## Как устроены коды
+
+Код — это упакованный сид детерминированного PRNG: 80 бит (версия 4 + жанр 5 + сид 60 + CRC-8) в Crockford Base32. Генерация — чистая функция `f(seed, genre) → Song`, одинаковая на любой платформе, поэтому код *является* треком.
+
+---
+
+Внутренняя документация (архитектура, инварианты, история решений) — [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).

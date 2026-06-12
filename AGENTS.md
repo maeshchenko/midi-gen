@@ -20,6 +20,8 @@
 - `npm test` / `npm run test:watch` — vitest
 - `npm run typecheck` — tsc --noEmit
 - `npm run build` — typecheck + vite build
+- `npm run build:lib` — tsup → dist/ (библиотека: core + audio)
+- `npm run demo` — headless-генерация .mid в Node (смоук headless-инварианта)
 
 ## Стек
 
