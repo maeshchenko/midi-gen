@@ -3,6 +3,7 @@ import { CodeError, generate, listGenres, songToMidi } from '../core';
 import type { GenreId, Song } from '../core/types';
 import { createPlayer, type Player } from '../audio/player';
 import { renderToMp3, renderToWav } from '../audio/export';
+import { createPianoRoll } from './pianoroll';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const MODE_NAMES: Record<string, string> = {
@@ -40,6 +41,7 @@ app.innerHTML = `
     <p class="error-msg" id="error"></p>
 
     <p class="info" id="info">press GENERATE</p>
+    <canvas class="roll" id="roll"></canvas>
     <div class="progress"><div class="progress-fill" id="progress"></div></div>
 
     <div class="row transport">
@@ -55,7 +57,7 @@ app.innerHTML = `
     </div>
     <p class="code-hint" id="export-status"></p>
 
-    <p class="footer">midi-gen v0.1 · greets to razor 1911</p>
+    <div class="footer marquee"><span>midi-gen v0.1 ··· greets fly out to: RAZOR 1911 · FAIRLIGHT · DEVIANCE · SKID ROW · TRISTAR &amp; RED SECTOR · FUTURE CREW · THE TONE.JS CREW · keep the scene alive ···&nbsp;</span></div>
   </div>
 `;
 
@@ -76,7 +78,10 @@ const el = {
   saveWav: document.querySelector<HTMLButtonElement>('#save-wav')!,
   saveMp3: document.querySelector<HTMLButtonElement>('#save-mp3')!,
   exportStatus: document.querySelector<HTMLParagraphElement>('#export-status')!,
+  roll: document.querySelector<HTMLCanvasElement>('#roll')!,
 };
+
+const roll = createPianoRoll(el.roll);
 
 for (const g of listGenres()) {
   const opt = document.createElement('option');
@@ -103,6 +108,7 @@ function setSong(next: Song): void {
   el.exportStatus.textContent = '';
   el.error.textContent = '';
   el.progress.style.width = '0%';
+  roll.setSong(next);
   history.replaceState(null, '', `?code=${next.code}`);
 }
 
@@ -132,6 +138,7 @@ async function runExport(button: HTMLButtonElement, ext: string, make: () => Pro
 function tickProgress(): void {
   if (player?.isPlaying()) {
     el.progress.style.width = `${(player.positionSec() / player.durationSec) * 100}%`;
+    roll.draw(player.positionSec());
     rafId = requestAnimationFrame(tickProgress);
   }
 }
@@ -194,6 +201,15 @@ el.stop.addEventListener('click', () => {
   el.play.disabled = false;
   el.stop.disabled = true;
   el.progress.style.width = '0%';
+  roll.draw(0);
+});
+
+// Space toggles play/stop (unless typing a code).
+document.addEventListener('keydown', (e) => {
+  if (e.code !== 'Space' || e.target === el.codeInput) return;
+  e.preventDefault();
+  if (player?.isPlaying()) el.stop.click();
+  else if (!el.play.disabled) el.play.click();
 });
 
 el.saveMid.addEventListener('click', () => {

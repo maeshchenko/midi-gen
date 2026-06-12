@@ -98,7 +98,15 @@ export function createPlayer(song: Song, opts: { loop?: boolean } = {}): Player 
       playing = false;
     },
     isPlaying: () => playing,
-    positionSec: () => Math.min(transport.seconds, durationSec),
+    positionSec: () => {
+      // What the UI should show is what the EAR hears now: transport time
+      // minus the scheduling look-ahead and the device output latency —
+      // otherwise the playhead runs ~100–150ms ahead of the sound.
+      const ctx = Tone.getContext();
+      const raw = ctx.rawContext as AudioContext;
+      const latency = ctx.lookAhead + (raw.outputLatency || raw.baseLatency || 0);
+      return Math.max(0, Math.min(transport.seconds - latency, durationSec));
+    },
     setLoop(on) {
       loop = on;
       if (playing) {
