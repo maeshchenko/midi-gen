@@ -61,6 +61,8 @@ export interface GenreConfig {
   id: GenreId;
   name: string;
   bpm: [number, number];
+  /** Bimodal tempo (shanson: lyrical 80–95 vs kabak 115–125). Overrides `bpm` when set. */
+  bpmLanes?: Weighted<[number, number]>[];
   timeSig: [number, number];
   keys: Weighted<number>[];
   modes: Weighted<Mode>[];

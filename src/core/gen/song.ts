@@ -44,7 +44,8 @@ export function generate(opts: GenerateOptions = {}): Song {
   };
 
   const global = rng('global');
-  const bpm = global.int(cfg.bpm[0], cfg.bpm[1]);
+  const bpmRange = cfg.bpmLanes ? global.weighted(cfg.bpmLanes) : cfg.bpm;
+  const bpm = global.int(bpmRange[0], bpmRange[1]);
   const tonic = global.weighted(cfg.keys);
   const mode = global.weighted(cfg.modes);
   const swing =

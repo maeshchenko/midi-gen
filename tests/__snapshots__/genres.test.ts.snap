@@ -48,11 +48,11 @@ exports[`nightcore > canary 1`] = `
 }
 `;
 
-exports[`noir > canary 1`] = `
+exports[`noir (dark jazz, spec) > canary 1`] = `
 {
-  "bpm": 87,
+  "bpm": 73,
   "code": "2200-0000-0000-F6WS",
-  "fingerprint": "e7eeabdb",
+  "fingerprint": "f656dbd6",
 }
 `;
 

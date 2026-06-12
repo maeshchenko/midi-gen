@@ -16,6 +16,8 @@ export interface Voice {
   dispose(): void;
   /** Exposed low-pass cutoff for section automation (phonk intro/build-up). */
   cutoff?: Tone.Signal<'frequency'>;
+  /** Async insert FX (per-voice reverb IR) — awaited before offline render. */
+  ready?: Promise<unknown>;
 }
 
 const midiHz = (pitch: number): number => 440 * 2 ** ((pitch - 69) / 12);
@@ -165,11 +167,12 @@ function makeBass808(out: Tone.ToneAudioNode): Voice {
 function makeMutedTrumpet(out: Tone.ToneAudioNode): Voice {
   const synth = new Tone.MonoSynth({
     oscillator: { type: 'sawtooth' },
-    envelope: { attack: 0.045, decay: 0.2, sustain: 0.7, release: 0.18 },
+    portamento: 0.045, // wide intervals smear into a short gliss/bend
+    envelope: { attack: 0.05, decay: 0.2, sustain: 0.7, release: 0.25 },
     filter: { type: 'lowpass', Q: 3 },
-    filterEnvelope: { attack: 0.05, decay: 0.25, sustain: 0.5, release: 0.2, baseFrequency: 650, octaves: 1.2 },
+    filterEnvelope: { attack: 0.06, decay: 0.25, sustain: 0.5, release: 0.25, baseFrequency: 650, octaves: 1.2 },
   });
-  synth.volume.value = -7;
+  synth.volume.value = -10;
   const vibrato = new Tone.Vibrato(4.5, 0.09);
   synth.chain(vibrato, out);
   return {
@@ -203,7 +206,7 @@ function makeVibraphone(out: Tone.ToneAudioNode): Voice {
     envelope: { attack: 0.004, decay: 1.4, sustain: 0, release: 0.9 },
     modulationEnvelope: { attack: 0.002, decay: 0.3, sustain: 0, release: 0.3 },
   });
-  synth.volume.value = -12;
+  synth.volume.value = -7;
   const tremolo = new Tone.Tremolo(4, 0.35).start();
   synth.chain(tremolo, out);
   return {
@@ -391,6 +394,8 @@ function makeSupersawLead(out: Tone.ToneAudioNode, bpm: number): Voice {
   };
 }
 
+
+
 function makeGenericPoly(out: Tone.ToneAudioNode): Voice {
   const synth = new Tone.PolySynth(Tone.Synth, {
     oscillator: { type: 'triangle' },
@@ -409,15 +414,26 @@ interface DrumKitOpts {
   hatBus?: Tone.ToneAudioNode;
   /** Fired at every kick trigger time — drives sidechain ducking. */
   onKick?: (timeSec: number) => void;
+  /** Noir: dull thump — no click, nothing above ~180Hz, no pitch sweep. */
+  dullKick?: boolean;
 }
 
 function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
-  const kick = new Tone.MembraneSynth({
-    pitchDecay: 0.04,
-    octaves: 6,
-    envelope: { attack: 0.001, decay: 0.35, sustain: 0.01, release: 0.4 },
-  });
-  kick.volume.value = -2;
+  const kick = new Tone.MembraneSynth(
+    opts.dullKick
+      ? {
+          pitchDecay: 0.015,
+          octaves: 1.5,
+          envelope: { attack: 0.01, decay: 0.3, sustain: 0.01, release: 0.3 },
+        }
+      : {
+          pitchDecay: 0.04,
+          octaves: 6,
+          envelope: { attack: 0.001, decay: 0.35, sustain: 0.01, release: 0.4 },
+        },
+  );
+  kick.volume.value = opts.dullKick ? -8 : -2;
+  const kickFilter = opts.dullKick ? new Tone.Filter(180, 'lowpass') : null;
 
   const snare = new Tone.NoiseSynth({
     noise: { type: 'white' },
@@ -461,12 +477,50 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
   });
   tom.volume.value = -6;
 
+  const clap = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.001, decay: 0.09, sustain: 0 },
+  });
+  clap.volume.value = -8;
+  const clapBand = new Tone.Filter({ frequency: 1400, type: 'bandpass', Q: 1.2 });
+  clap.chain(clapBand, out);
+
+  const shaker = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.04, sustain: 0 },
+  });
+  shaker.volume.value = -20;
+  const shakerHp = new Tone.Filter(7500, 'highpass');
+  shaker.chain(shakerHp, out);
+
+  const tambourine = new Tone.MetalSynth({
+    envelope: { attack: 0.001, decay: 0.12, release: 0.05 },
+    harmonicity: 7,
+    modulationIndex: 28,
+    resonance: 5500,
+    octaves: 1.4,
+  });
+  tambourine.volume.value = -16;
+
+  // Dark jazz ride — long, low, washy.
+  const ride = new Tone.MetalSynth({
+    envelope: { attack: 0.002, decay: 0.8, release: 0.4 },
+    harmonicity: 4.1,
+    modulationIndex: 20,
+    resonance: 2400,
+    octaves: 1.2,
+  });
+  ride.volume.value = -22;
+
   const hatOut = opts.hatBus ?? out;
-  kick.connect(out);
+  if (kickFilter) kick.chain(kickFilter, out);
+  else kick.connect(out);
   hat.connect(hatOut);
   hatOpen.connect(hatOut);
   crash.connect(out);
   tom.connect(out);
+  ride.connect(out);
+  tambourine.connect(hatOut);
 
   // Every sub-synth is monophonic — guard each against same-instant retriggers.
   const gKick = monoGuard((p, t, d, v) => {
@@ -478,6 +532,10 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
   const gHatOpen = monoGuard((p, t, _d, v) => hatOpen.triggerAttackRelease(midiHz(p), 0.3, t, v));
   const gCrash = monoGuard((p, t, _d, v) => crash.triggerAttackRelease(midiHz(p), 1.4, t, v * 0.8));
   const gTom = monoGuard((p, t, d, v) => tom.triggerAttackRelease(midiHz(p), d, t, v));
+  const gRide = monoGuard((p, t, _d, v) => ride.triggerAttackRelease(midiHz(p), 0.7, t, v));
+  const gTamb = monoGuard((p, t, _d, v) => tambourine.triggerAttackRelease(midiHz(p), 0.15, t, v));
+  const gClap = monoGuard((_p, t, d, v) => clap.triggerAttackRelease(d, t, v));
+  const gShaker = monoGuard((_p, t, d, v) => shaker.triggerAttackRelease(d, t, v));
 
   return {
     trigger: (pitch, t, d, v) => {
@@ -497,6 +555,18 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
         case GM_DRUMS.crash:
           gCrash(85, t, d, v);
           break;
+        case GM_DRUMS.ride:
+          gRide(72, t, d, v);
+          break;
+        case GM_DRUMS.tambourine:
+          gTamb(86, t, d, v);
+          break;
+        case GM_DRUMS.clap:
+          gClap(0, t, d, v);
+          break;
+        case GM_DRUMS.shaker:
+          gShaker(0, t, d, v);
+          break;
         case GM_DRUMS.tomLow:
           gTom(45, t, d, v);
           break;
@@ -512,12 +582,19 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
     },
     dispose: () => {
       kick.dispose();
+      kickFilter?.dispose();
       snare.dispose();
       snareBody.dispose();
       hat.dispose();
       hatOpen.dispose();
       crash.dispose();
       tom.dispose();
+      ride.dispose();
+      tambourine.dispose();
+      clap.dispose();
+      clapBand.dispose();
+      shaker.dispose();
+      shakerHp.dispose();
     },
   };
 }
@@ -587,8 +664,15 @@ export interface Ensemble {
 /** Genre colour on the master bus, between the voice bus and the compressor. */
 function masterFx(genre: Song['genre']): Tone.ToneAudioNode[] {
   switch (genre) {
-    case 'noir':
-      return [new Tone.Reverb({ decay: 2.8, wet: 0.32 })];
+    case 'noir': {
+      // Vintage tape chain: soft saturation (even-ish harmonics) → long dark
+      // chamber → tape wow → old-gear EQ (no air above ~9k, no sub below 45).
+      const sat = new Tone.Distortion(0.08);
+      sat.wet.value = 0.4;
+      const chamber = new Tone.Reverb({ decay: 4.5, wet: 0.32 });
+      const wow = new Tone.Vibrato(0.7, 0.012);
+      return [sat, chamber, wow, new Tone.Filter(9000, 'lowpass'), new Tone.Filter(45, 'highpass')];
+    }
     case 'grime': {
       const dirt = new Tone.Distortion(0.06);
       dirt.wet.value = 0.5;
@@ -668,6 +752,33 @@ export function buildEnsemble(song: Song): Ensemble {
   const isPhonk = song.genre === 'phonk';
   const extras: { dispose(): void }[] = [];
 
+  // Noir spec: continuous foley bed — rain, vinyl crackle, brush stirring
+  // (noise swelling in tempo). Always on, so the loop seam hides inside it.
+  if (song.genre === 'noir') {
+    // sync(): ambience runs WITH the transport — silence after stop().
+    const rain = new Tone.Noise('pink');
+    rain.volume.value = -41;
+    const rainFilter = new Tone.Filter(1300, 'lowpass');
+    rain.chain(rainFilter, bus);
+    rain.sync().start(0);
+    extras.push(rain, rainFilter);
+
+    const vinyl = new Tone.Noise('white');
+    vinyl.volume.value = -46;
+    const vinylBand = new Tone.Filter({ frequency: 3200, type: 'bandpass', Q: 0.6 });
+    vinyl.chain(vinylBand, bus);
+    vinyl.sync().start(0);
+    extras.push(vinyl, vinylBand);
+
+    const stir = new Tone.Noise('white');
+    stir.volume.value = -42;
+    const stirBand = new Tone.Filter({ frequency: 5200, type: 'bandpass', Q: 1.2 });
+    const stirSwell = new Tone.Tremolo(song.bpm / 60, 0.85).start(); // one swirl per beat
+    stir.chain(stirBand, stirSwell, bus);
+    stir.sync().start(0);
+    extras.push(stir, stirBand, stirSwell);
+  }
+
   // Phonk spec: sidechain — cowbell and hats duck hard on every kick
   // (attack ≤5ms, release ~130ms), plus constant tape hiss on the bus.
   let duck: Tone.Gain | null = null;
@@ -679,7 +790,7 @@ export function buildEnsemble(song: Song): Ensemble {
     const hiss = new Tone.Noise('pink');
     hiss.volume.value = -42;
     hiss.connect(bus);
-    hiss.start();
+    hiss.sync().start(0); // with the transport — no infinite hiss after stop
     extras.push(hiss);
     const g = duck.gain;
     onKick = (t) => {
@@ -692,6 +803,7 @@ export function buildEnsemble(song: Song): Ensemble {
   const voices = song.tracks.map((t) => {
     if (isPhonk && t.role === 'drums') return makeDrumKit(bus, { hatBus: duck!, onKick });
     if (isPhonk && t.role === 'lead') return makePhonkCowbell(duck!);
+    if (song.genre === 'noir' && t.role === 'drums') return makeDrumKit(bus, { dullKick: true });
     return voiceForTrack(t, song.bpm, bus);
   });
 
@@ -703,9 +815,10 @@ export function buildEnsemble(song: Song): Ensemble {
       : voices[song.tracks.findIndex((t) => t.role === target)]?.cutoff;
   const automations = spec ? buildFilterAutomations(song, cutoffOf(spec.target)) : [];
 
-  const ready = Promise.all(
-    fx.filter((n): n is Tone.Reverb => n instanceof Tone.Reverb).map((n) => n.ready),
-  );
+  const ready = Promise.all([
+    ...fx.filter((n): n is Tone.Reverb => n instanceof Tone.Reverb).map((n) => n.ready),
+    ...voices.map((v) => v.ready ?? Promise.resolve()),
+  ]);
 
   return {
     voices,

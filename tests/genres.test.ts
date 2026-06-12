@@ -73,40 +73,76 @@ describe('grime (ex-Memphis phonk)', () => {
   });
 });
 
-describe('noir', () => {
+describe('noir (dark jazz, spec)', () => {
   const song = generate({ genre: 'noir', seed: 1947n });
+  const barTicks = 4 * 480;
+  const sectionOf = (start: number) =>
+    [...song.sections].reverse().find((s) => start >= s.startBar * barTicks)!;
 
   it('passes MIDI invariants and is deterministic', () => {
     checkInvariants(song);
     expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
   });
 
-  it('slow tempo, swing on', () => {
-    expect(song.bpm).toBeGreaterThanOrEqual(70);
-    expect(song.bpm).toBeLessThanOrEqual(95);
-    expect(song.swing).toBeGreaterThanOrEqual(0.4);
+  it('60–80 BPM, hard shuffle (swing ≥ 0.85)', () => {
+    expect(song.bpm).toBeGreaterThanOrEqual(60);
+    expect(song.bpm).toBeLessThanOrEqual(80);
+    expect(song.swing).toBeGreaterThanOrEqual(0.85);
   });
 
-  it('walking bass: one note per beat, quarter-ish durations', () => {
+  it('soloist is sparse: phrases with silence between', () => {
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    const bars = song.durationTicks / barTicks;
+    expect(lead.notes.length / bars).toBeLessThan(4);
+  });
+
+  it('walking only in dev/B with 2&4 accents; sparse in A; nothing in outro', () => {
     const bass = song.tracks.find((t) => t.role === 'bass')!;
-    const totalBeats = song.durationTicks / 480;
-    expect(bass.notes.length).toBeGreaterThan(totalBeats * 0.9);
-    for (const n of bass.notes) {
-      expect(n.dur).toBeLessThanOrEqual(480);
+    const devOrB = bass.notes.filter((n) => ['dev', 'B'].includes(sectionOf(n.start).name));
+    const inA = bass.notes.filter((n) => sectionOf(n.start).name === 'A');
+    const inOutro = bass.notes.filter((n) => sectionOf(n.start).name === 'outro');
+    expect(devOrB.length).toBeGreaterThan(inA.length);
+    expect(inOutro.length).toBe(0);
+    // accents: offbeat (2,4) walking notes louder on average than 1,3
+    const beatPos = (n: { start: number }) => Math.round((n.start % barTicks) / 480) % 4;
+    const acc = devOrB.filter((n) => beatPos(n) === 1 || beatPos(n) === 3);
+    const plain = devOrB.filter((n) => beatPos(n) === 0 || beatPos(n) === 2);
+    const avg = (xs: { vel: number }[]) => xs.reduce((s, x) => s + x.vel, 0) / xs.length;
+    expect(avg(acc)).toBeGreaterThan(avg(plain));
+  });
+
+  it('comping: extended voicings (≥4 notes), strummed (spread starts)', () => {
+    const chords = song.tracks.find((t) => t.role === 'chords')!;
+    const groups = new Map<number, number[]>();
+    for (const n of chords.notes) {
+      const bucket = Math.round(n.start / 240);
+      groups.set(bucket, [...(groups.get(bucket) ?? []), n.start]);
+    }
+    const big = [...groups.values()].filter((g) => g.length >= 4);
+    expect(big.length).toBeGreaterThan(0);
+    // strum: starts inside a chord are NOT identical
+    const spread = big.filter((g) => Math.max(...g) - Math.min(...g) > 4);
+    expect(spread.length).toBeGreaterThan(big.length * 0.5);
+  });
+
+  it('texture drums: dark ride present, kick whisper-quiet, slaps 40–60', () => {
+    const drums = song.tracks.find((t) => t.role === 'drums')!;
+    expect(drums.notes.some((n) => n.pitch === 51)).toBe(true);
+    for (const n of drums.notes.filter((x) => x.pitch === 36)) {
+      expect(n.vel).toBeLessThanOrEqual(55);
     }
   });
 
-  it('vibraphone comps seventh chords (4+ pitch classes per span)', () => {
-    const chords = song.tracks.find((t) => t.role === 'chords')!;
-    expect(chords.program).toBe(11);
-    // Humanize jitters note starts — bucket by 16th-note windows.
-    const byStart = new Map<number, number>();
-    for (const n of chords.notes) {
-      const bucket = Math.round(n.start / 120);
-      byStart.set(bucket, (byStart.get(bucket) ?? 0) + 1);
+  it('outro empties out (only the soloist rings)', () => {
+    const outro = song.sections[song.sections.length - 1]!;
+    expect(outro.name).toBe('outro');
+    for (const track of song.tracks) {
+      const inOutro = track.notes.filter(
+        (n) => n.start >= outro.startBar * barTicks + 10,
+      );
+      if (track.role === 'lead') expect(inOutro.length).toBeLessThanOrEqual(2);
+      else expect(inOutro.length).toBe(0);
     }
-    const sizes = [...byStart.values()];
-    expect(Math.max(...sizes)).toBeGreaterThanOrEqual(4);
   });
 
   it('canary', () => {
