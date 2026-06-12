@@ -2,7 +2,8 @@
 
 ## 2026-06-12 — GitHub Pages деплой
 
-- `.github/workflows/pages.yml`: push в main → npm ci → vitest → tsc → `vite build --base=/midi-gen/` → deploy-pages. `configure-pages` с `enablement: true` — Pages включается сам, в настройках репо ничего кликать не надо.
+- `.github/workflows/pages.yml`: push в main → npm ci → vitest → tsc → `vite build --base=/midi-gen/` → deploy-pages.
+- **Подводный камень:** `configure-pages` с `enablement: true` падает с «Resource not accessible by integration» — GITHUB_TOKEN не может СОЗДАТЬ Pages-сайт через API. Шаг убран; Pages включается один раз руками: Settings → Pages → Source: **GitHub Actions**. Заодно checkout/setup-node подняты до v5 (node20 deprecation).
 - База `/midi-gen/` задаётся флагом только в CI — локальный dev остаётся на `/`. Проверено локальной сборкой: ассеты в index.html получают префикс, mp3-воркер резолвится через `import.meta.url` (base-aware).
 - URL после первого деплоя: https://maeshchenko.github.io/midi-gen/ — embed-сниппеты начнут выдавать рабочие iframe автоматически (они берут URL из `location`).
 - Нюанс: `vite build` и `tsup` делят `dist/` — локально сборка приложения затирает библиотеку (восстанавливается `npm run build:lib`); в CI checkout чистый, артефакт = только приложение.
