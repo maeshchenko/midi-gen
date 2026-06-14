@@ -24,6 +24,25 @@ const EB_DRIVE: StepPattern = {
   perc: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0], // clap pickup into the next bar
 };
 
+// Pumping gate: kick + heavy offbeat open-hat, claps on the backbeat — peak rush.
+const EB_PUMP: StepPattern = {
+  name: 'eb-pump',
+  kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+  snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+  hatClosed: [0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0],
+  hatOpen: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+  perc: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+};
+
+// Double-time drive: rolling 1/16 hats + ghost snares, the Initial-D charge.
+const EB_RUSH: StepPattern = {
+  name: 'eb-rush',
+  kick: [1, 0, 0, 0, 1, 0, 0, 0.5, 1, 0, 0, 0, 1, 0, 0.6, 0],
+  snare: [0, 0, 0, 0, 1, 0, 0, 0.4, 0, 0, 0.3, 0, 1, 0, 0, 0.5],
+  hatClosed: [0.8, 0.5, 0.6, 0.5, 0.8, 0.5, 0.6, 0.5, 0.8, 0.5, 0.6, 0.5, 0.8, 0.5, 0.6, 0.5],
+  hatOpen: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+};
+
 export const EUROBEAT: GenreConfig = {
   id: 'eurobeat',
   name: 'Eurobeat',
@@ -78,6 +97,27 @@ export const EUROBEAT: GenreConfig = {
         { name: 'drop', bars: 8 },
       ],
     },
+    {
+      // One extended 16-bar euphoria drop (single drop — loops break→intro).
+      w: 1,
+      v: [
+        { name: 'intro', bars: 4 },
+        { name: 'build', bars: 8 },
+        { name: 'drop', bars: 16 },
+        { name: 'break', bars: 8 },
+      ],
+    },
+    {
+      // Long breather between two drops.
+      w: 1,
+      v: [
+        { name: 'intro', bars: 4 },
+        { name: 'drop', bars: 8 },
+        { name: 'break', bars: 12 },
+        { name: 'build', bars: 4 },
+        { name: 'drop', bars: 8 },
+      ],
+    },
   ],
   progressions: [
     // The eurobeat staples, minor-side.
@@ -85,6 +125,11 @@ export const EUROBEAT: GenreConfig = {
     { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 6, beats: 4 }, { degree: 5, beats: 4 }, { degree: 6, beats: 4 }] },
     { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 5, beats: 4 }, { degree: 2, beats: 4 }, { degree: 6, beats: 4 }] },
     { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 3, beats: 4 }, { degree: 5, beats: 4 }, { degree: 4, beats: 4 }] },
+    // More euro movement (incl. major-side lift for the major mode).
+    { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 5, beats: 4 }, { degree: 3, beats: 4 }, { degree: 4, beats: 4 }] }, // i–VI–iv–V
+    { w: 1, v: [{ degree: 5, beats: 4 }, { degree: 3, beats: 4 }, { degree: 0, beats: 4 }, { degree: 4, beats: 4 }] }, // VI–iv–i–V
+    { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 4, beats: 4 }, { degree: 5, beats: 4 }, { degree: 3, beats: 4 }] }, // I–V–vi–IV
+    { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 6, beats: 4 }, { degree: 3, beats: 4 }, { degree: 4, beats: 4 }] }, // i–VII–iv–V
   ],
   distinctProgressions: true,
   melody: {
@@ -94,13 +139,25 @@ export const EUROBEAT: GenreConfig = {
     restProb: 0.06,
     syncopation: 0.45,
   },
-  bass: { style: 'octave8', register: [33, 47] }, // root/octave see-saw — THE eurobeat engine
+  bass: {
+    style: 'octave8', // root/octave see-saw — THE eurobeat engine
+    styles: [
+      { w: 3, v: 'octave8' },
+      { w: 1, v: 'synth8' }, // driving root-pump variant
+      { w: 1, v: 'syncopated16' }, // sequenced 3-3-2 push
+    ],
+    register: [33, 47],
+  },
   comping: { register: [57, 76], style: 'stabs' }, // synth-brass hits
+  // Reverted to the known-good arp (updown/octaves) — the added up/down cycles
+  // made it wander through the lead register = "каша/каконофония".
   arp: { register: [64, 86], rate: 4, patterns: [{ w: 2, v: 'updown' }, { w: 1, v: 'octaves' }] },
   drums: {
     patterns: [
-      { w: 2, v: EB_FLOOR },
-      { w: 1, v: EB_DRIVE },
+      { w: 3, v: EB_FLOOR },
+      { w: 2, v: EB_DRIVE },
+      { w: 2, v: EB_PUMP },
+      { w: 1, v: EB_RUSH },
     ],
     fillEvery: 8,
     fillStyle: 'mixed',

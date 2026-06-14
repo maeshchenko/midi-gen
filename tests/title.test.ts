@@ -43,7 +43,7 @@ describe('track titles', () => {
       nightcore: '1d6ebf7b',
       tune: '8eaef612',
       musicbox: '1cc23708',
-      eurobeat: '11fb4fc0', // re-pinned 2026-06-12: outrun-style game arc (deliberate re-gen)
+      eurobeat: '39584171', // re-pinned 2026-06-15: enriched (patterns/progressions/structures/bass), arp kept original
       outrun: '9cf5ca16',
       grimerun: 'dba378a3',
       doomerwave: 'a75ec1cc',

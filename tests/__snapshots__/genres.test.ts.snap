@@ -44,7 +44,7 @@ exports[`eurobeat > canary 1`] = `
 {
   "bpm": 154,
   "code": "2P00-0000-000E-P5RH",
-  "fingerprint": "75498fb6",
+  "fingerprint": "ee7f2d6f",
 }
 `;
 
