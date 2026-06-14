@@ -2,6 +2,35 @@ import * as Tone from 'tone';
 import { PPQ, type Song } from '../core/types';
 import { buildEnsemble, type Ensemble } from './instruments';
 
+/**
+ * Live Web Audio underruns ("хрип/треск") when the output buffer is tiny — the
+ * default 'interactive' latency hint uses the smallest buffer, which drops
+ * samples whenever the page also renders a game/canvas/UI. That is why the
+ * OFFLINE render (.wav) is clean but live playback crackles. A 'playback'
+ * latency hint + wider scheduling window gives the audio thread enough slack.
+ *
+ * Done once at import, BEFORE any createPlayer captures the Transport, so the
+ * Transport belongs to this context. Tone.Offline (renderSong) builds its own
+ * context inside its callback, so rendering is unaffected.
+ */
+let rtConfigured = false;
+function configureRealtimeAudio(): void {
+  if (rtConfigured) return;
+  rtConfigured = true;
+  try {
+    const ctx = new Tone.Context({ latencyHint: 'playback' });
+    ctx.lookAhead = 0.2;
+    Tone.setContext(ctx);
+  } catch {
+    try {
+      Tone.getContext().lookAhead = 0.2;
+    } catch {
+      /* no audio context available yet */
+    }
+  }
+}
+configureRealtimeAudio();
+
 export interface Player {
   play(): Promise<void>;
   stop(): void;

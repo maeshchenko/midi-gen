@@ -674,3 +674,167 @@ describe('grimerun', () => {
     expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
   });
 });
+
+describe('doomerwave (song form, post-punk)', () => {
+  const song = generate({ genre: 'doomerwave', seed: 0xd00dn });
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('4/4, 110–132 BPM, exclusively natural minor', () => {
+    expect(song.timeSig).toEqual([4, 4]);
+    expect(song.bpm).toBeGreaterThanOrEqual(110);
+    expect(song.bpm).toBeLessThanOrEqual(132);
+    expect(song.key.mode).toBe('naturalMinor');
+  });
+
+  it('song-form sections: intro/verse/prechorus/chorus/outro only', () => {
+    const allowed = new Set(['intro', 'verse', 'prechorus', 'chorus', 'outro']);
+    for (const s of song.sections) expect(allowed.has(s.name)).toBe(true);
+    expect(song.sections[0]!.name).toBe('intro');
+    expect(song.sections[song.sections.length - 1]!.name).toBe('outro');
+  });
+
+  it('loop-safe thin outro: only the bass plays, and it does play', () => {
+    const barTicks = 4 * 480;
+    const outro = song.sections[song.sections.length - 1]!;
+    const within = (n: { start: number }) =>
+      n.start >= outro.startBar * barTicks + 10 &&
+      n.start < (outro.startBar + outro.bars) * barTicks - 10;
+    const bass = song.tracks.find((t) => t.role === 'bass')!;
+    expect(bass.notes.filter(within).length).toBeGreaterThan(0);
+    for (const track of song.tracks) {
+      if (track.role !== 'bass') expect(track.notes.filter(within).length).toBe(0);
+    }
+  });
+
+  it('bass stays in the low register (gallop/octave/straight/half feels)', () => {
+    const bass = song.tracks.find((t) => t.role === 'bass')!;
+    for (const n of bass.notes) {
+      expect(n.pitch).toBeGreaterThanOrEqual(33);
+      expect(n.pitch).toBeLessThanOrEqual(57); // [33,45] roots + octave pops
+    }
+  });
+
+  it('chorused clean guitar and cold pad present', () => {
+    expect(song.tracks.find((t) => t.role === 'arp')!.program).toBe(27);
+    expect(song.tracks.find((t) => t.role === 'chords')!.program).toBe(91);
+    expect(song.tracks.find((t) => t.role === 'lead')!.program).toBe(88);
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});
+
+describe('doomerrun (post-punk rhythm-game lane)', () => {
+  const song = generate({ genre: 'doomerrun', seed: 0xd00d2n });
+  const barTicks = 4 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('4/4, 122–138 BPM, natural minor', () => {
+    expect(song.timeSig).toEqual([4, 4]);
+    expect(song.bpm).toBeGreaterThanOrEqual(122);
+    expect(song.bpm).toBeLessThanOrEqual(138);
+    expect(song.key.mode).toBe('naturalMinor');
+  });
+
+  it('beatmap grid: zero timing humanize, every onset on the 32nd grid', () => {
+    for (const track of song.tracks) {
+      for (const n of track.notes) {
+        expect(n.start % 60).toBe(0);
+      }
+    }
+  });
+
+  it('dynamics arc: break is a valley between drop peaks', () => {
+    const energy = (name: string) => {
+      const secs = song.sections.filter((s) => s.name === name);
+      let sum = 0;
+      let bars = 0;
+      for (const s of secs) {
+        const from = s.startBar * barTicks;
+        const to = (s.startBar + s.bars) * barTicks;
+        for (const t of song.tracks) {
+          for (const n of t.notes) if (n.start >= from && n.start < to) sum += n.vel;
+        }
+        bars += s.bars;
+      }
+      return sum / bars;
+    };
+    expect(energy('drop')).toBeGreaterThan(energy('break') * 1.3);
+    expect(energy('drop')).toBeGreaterThan(energy('intro') * 1.5);
+  });
+
+  it('shares the doomer palette: gallop bass + clean guitar', () => {
+    expect(song.tracks.find((t) => t.role === 'bass')!.program).toBe(33);
+    expect(song.tracks.find((t) => t.role === 'arp')!.program).toBe(27);
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});
+
+describe('nightcorerun (nightcore rhythm-game lane)', () => {
+  const song = generate({ genre: 'nightcorerun', seed: 0x1c0den });
+  const barTicks = 4 * 480;
+
+  it('passes invariants, deterministic', () => {
+    checkInvariants(song);
+    expect(fingerprint(generate({ code: song.code }))).toBe(fingerprint(song));
+  });
+
+  it('4/4, 165–190 BPM, dramatic minor, soaring symphonic lead', () => {
+    expect(song.timeSig).toEqual([4, 4]);
+    expect(song.bpm).toBeGreaterThanOrEqual(165);
+    expect(song.bpm).toBeLessThanOrEqual(190);
+    expect(['naturalMinor', 'harmonicMinor']).toContain(song.key.mode);
+    const lead = song.tracks.find((t) => t.role === 'lead')!;
+    expect([49, 48, 40, 1]).toContain(lead.program); // per-seed timbre pool
+    for (const n of lead.notes) expect(n.pitch).toBeGreaterThanOrEqual(76);
+  });
+
+  it('metal palette: power-chord guitar + picked metal bass + strings', () => {
+    expect(song.tracks.find((t) => t.role === 'arp')!.program).toBe(30);
+    expect(song.tracks.find((t) => t.role === 'bass')!.program).toBe(34);
+    expect(song.tracks.find((t) => t.role === 'chords')!.program).toBe(48);
+  });
+
+  it('beatmap grid: zero timing humanize, every onset on the 32nd grid', () => {
+    for (const track of song.tracks) {
+      for (const n of track.notes) {
+        expect(n.start % 60).toBe(0);
+      }
+    }
+  });
+
+  it('dynamics arc: break is a valley between drop peaks', () => {
+    const energy = (name: string) => {
+      const secs = song.sections.filter((s) => s.name === name);
+      let sum = 0;
+      let bars = 0;
+      for (const s of secs) {
+        const from = s.startBar * barTicks;
+        const to = (s.startBar + s.bars) * barTicks;
+        for (const t of song.tracks) {
+          for (const n of t.notes) if (n.start >= from && n.start < to) sum += n.vel;
+        }
+        bars += s.bars;
+      }
+      return sum / bars;
+    };
+    expect(energy('drop')).toBeGreaterThan(energy('break') * 1.3);
+    expect(energy('drop')).toBeGreaterThan(energy('intro') * 1.5);
+  });
+
+  it('canary', () => {
+    expect({ code: song.code, bpm: song.bpm, fingerprint: fingerprint(song) }).toMatchSnapshot();
+  });
+});

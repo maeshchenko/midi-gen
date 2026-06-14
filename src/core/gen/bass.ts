@@ -282,6 +282,160 @@ function boogie(ctx: GenContext): NoteEvent[] {
   return notes;
 }
 
+/**
+ * 'gallop' — post-punk lead bass. Each section name draws its own FEEL from a
+ * pool so the bass isn't the same horse-gallop the whole track: octave gallop
+ * (low 1/8 → octave 1/16 → octave 1/16, the Joy Division / Молчат-Дома engine),
+ * a straight driving eighth line, a root/octave see-saw, or brooding half-note
+ * roots. Melodic low notes (root → fifth → third) with a chromatic approach.
+ */
+function gallop(ctx: GenContext): NoteEvent[] {
+  const rng = ctx.rng('bass');
+  const [lo, hi] = ctx.cfg.bass.register;
+  const eighth = PPQ / 2;
+  const s16 = PPQ / 4;
+  const half = ctx.barTicks / 2;
+  const notes: NoteEvent[] = [];
+
+  type Feel = 'gallop' | 'straight' | 'octave' | 'half';
+  const FEELS: Feel[] = ['gallop', 'gallop', 'straight', 'octave', 'half'];
+  const feelByName = new Map<string, Feel>();
+  const sectionName = (tick: number): string => {
+    for (let i = ctx.sections.length - 1; i >= 0; i--) {
+      const s = ctx.sections[i]!;
+      if (tick >= s.startBar * ctx.barTicks) return s.name;
+    }
+    return ctx.sections[0]!.name;
+  };
+  const feelFor = (name: string): Feel => {
+    let f = feelByName.get(name);
+    if (!f) {
+      f = rng.pick(FEELS);
+      feelByName.set(name, f);
+    }
+    return f;
+  };
+
+  for (let si = 0; si < ctx.chords.length; si++) {
+    const span = ctx.chords[si]!;
+    const next: ChordSpan | undefined = ctx.chords[si + 1];
+    const root = placeInRegister(span.chord.root, lo, hi);
+    const thirdPc = span.chord.pitchClasses[1] ?? span.chord.root;
+    const fifthPc = span.chord.pitchClasses[2] ?? span.chord.root;
+    const feel = feelFor(sectionName(span.start));
+
+    if (feel === 'half') {
+      const count = Math.max(1, Math.floor(span.dur / half));
+      for (let i = 0; i < count; i++) {
+        notes.push({ pitch: root, start: span.start + i * half, dur: half - 20, vel: 96 + rng.int(-4, 4) });
+      }
+      continue;
+    }
+    if (feel === 'straight' || feel === 'octave') {
+      const count = Math.floor(span.dur / eighth);
+      const high = root + 12 <= hi ? root + 12 : root;
+      for (let i = 0; i < count; i++) {
+        let pitch = feel === 'octave' && i % 2 === 1 ? high : root;
+        if (i === count - 1 && next && next.chord.root !== span.chord.root && rng.chance(0.45)) {
+          const target = placeInRegister(next.chord.root, lo, hi);
+          pitch = target + (rng.chance(0.5) ? 1 : -1);
+          if (pitch < lo) pitch = target + 1;
+          if (pitch > hi) pitch = target - 1;
+        }
+        notes.push({ pitch, start: span.start + i * eighth, dur: eighth - 15, vel: (i % 2 === 0 ? 104 : 92) + rng.int(-3, 3) });
+      }
+      continue;
+    }
+
+    // gallop
+    const beats = Math.floor(span.dur / ctx.beatTicks);
+    for (let b = 0; b < beats; b++) {
+      const beatStart = span.start + b * ctx.beatTicks;
+      const isLastBeat = b === beats - 1;
+      let low = root;
+      if (isLastBeat && next && next.chord.root !== span.chord.root && rng.chance(0.5)) {
+        const target = placeInRegister(next.chord.root, lo, hi);
+        low = target + (rng.chance(0.5) ? 1 : -1);
+        if (low < lo) low = target + 1;
+        if (low > hi) low = target - 1;
+      } else if (b > 0 && rng.chance(0.3)) {
+        low = placeInRegister(rng.chance(0.6) ? fifthPc : thirdPc, lo, hi);
+      }
+      const high = low + 12 <= hi ? low + 12 : low;
+      notes.push({ pitch: low, start: beatStart, dur: eighth - 20, vel: 104 + rng.int(-4, 4) });
+      notes.push({ pitch: high, start: beatStart + eighth, dur: s16 - 10, vel: 90 + rng.int(-4, 4) });
+      notes.push({ pitch: high, start: beatStart + eighth + s16, dur: s16 - 10, vel: 88 + rng.int(-4, 4) });
+    }
+  }
+  return notes;
+}
+
+/**
+ * 'chug' — metal picked bass doubling the rhythm guitar/kick. Each section name
+ * draws its own feel from a pool (straight 1/8 / 1/16 drive / octave see-saw /
+ * 3-3-2 syncopation), so the low wall varies per seed and per section instead
+ * of being a dead-straight root line. A chromatic approach leads into the next
+ * chord. Sixteenth grid throughout (beatmap-safe).
+ */
+function chug(ctx: GenContext): NoteEvent[] {
+  const rng = ctx.rng('bass');
+  const [lo, hi] = ctx.cfg.bass.register;
+  const eighth = PPQ / 2;
+  const s16 = PPQ / 4;
+  const notes: NoteEvent[] = [];
+
+  // Per-section-name feel (3-3-2 mask on a 16th grid).
+  type Feel = 'straight' | 'drive16' | 'octave' | 'synco';
+  const FEELS: Feel[] = ['straight', 'straight', 'drive16', 'octave', 'synco'];
+  const SYNCO = [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 1, 0];
+  const feelByName = new Map<string, Feel>();
+  const sectionName = (tick: number): string => {
+    for (let i = ctx.sections.length - 1; i >= 0; i--) {
+      const s = ctx.sections[i]!;
+      if (tick >= s.startBar * ctx.barTicks) return s.name;
+    }
+    return ctx.sections[0]!.name;
+  };
+  const feelFor = (name: string): Feel => {
+    let f = feelByName.get(name);
+    if (!f) {
+      f = rng.pick(FEELS);
+      feelByName.set(name, f);
+    }
+    return f;
+  };
+
+  for (let si = 0; si < ctx.chords.length; si++) {
+    const span = ctx.chords[si]!;
+    const next: ChordSpan | undefined = ctx.chords[si + 1];
+    const root = placeInRegister(span.chord.root, lo, hi);
+    const high = root + 12 <= hi ? root + 12 : root;
+    const feel = feelFor(sectionName(span.start));
+    const unit = feel === 'drive16' || feel === 'synco' ? s16 : eighth;
+    const steps = Math.floor(span.dur / unit);
+
+    for (let i = 0; i < steps; i++) {
+      if (feel === 'synco' && !SYNCO[i % 16]) continue;
+      let pitch = root;
+      if (feel === 'octave' && i % 2 === 1) pitch = high;
+      const isLast = i === steps - 1;
+      if (isLast && next && next.chord.root !== span.chord.root && rng.chance(0.45)) {
+        const target = placeInRegister(next.chord.root, lo, hi);
+        pitch = target + (rng.chance(0.5) ? 1 : -1);
+        if (pitch < lo) pitch = target + 1;
+        if (pitch > hi) pitch = target - 1;
+      }
+      notes.push({
+        pitch,
+        start: span.start + i * unit,
+        dur: unit - 12,
+        vel: (i % 2 === 0 ? 104 : 94) + rng.int(-3, 3),
+      });
+    }
+  }
+  return notes;
+}
+
 /** 'march' — tuba oom-pah: root on the strong beat, fifth on the weak one. */
 function march(ctx: GenContext): NoteEvent[] {
   const rng = ctx.rng('bass');
@@ -363,6 +517,12 @@ export const genBass: PartGenerator = (ctx) => {
       break;
     case 'synth8':
       notes = synth8(ctx);
+      break;
+    case 'gallop':
+      notes = gallop(ctx);
+      break;
+    case 'chug':
+      notes = chug(ctx);
       break;
   }
 

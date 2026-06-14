@@ -28,6 +28,25 @@ const OR_PULSE: StepPattern = {
   hatOpen: [0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0],
 };
 
+// Syncopated electro kick (1 + the "and of 2", "and of 3") — Italo bounce.
+const OR_ELECTRO: StepPattern = {
+  name: 'or-electro',
+  kick: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0],
+  snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+  hatClosed: [0.7, 0.3, 0.5, 0.3, 0.7, 0.3, 0.5, 0.3, 0.7, 0.3, 0.5, 0.3, 0.7, 0.3, 0.5, 0.3],
+  hatOpen: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+  perc: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
+};
+
+// Driving 1/16 hats, snare with a ghost pickup — peak-energy variant.
+const OR_RUSH: StepPattern = {
+  name: 'or-rush',
+  kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
+  snare: [0, 0, 0, 0, 1, 0, 0, 0.4, 0, 0, 0, 0, 1, 0, 0, 0.4],
+  hatClosed: [0.8, 0.5, 0.6, 0.5, 0.8, 0.5, 0.6, 0.5, 0.8, 0.5, 0.6, 0.5, 0.8, 0.5, 0.6, 0.5],
+  hatOpen: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+};
+
 export const OUTRUN: GenreConfig = {
   id: 'outrun',
   name: 'Outrun',
@@ -78,6 +97,27 @@ export const OUTRUN: GenreConfig = {
         { name: 'drop', bars: 8 },
       ],
     },
+    {
+      // One extended 16-bar cruise drop (single drop — loops break→intro).
+      w: 1,
+      v: [
+        { name: 'intro', bars: 4 },
+        { name: 'build', bars: 8 },
+        { name: 'drop', bars: 16 },
+        { name: 'break', bars: 8 },
+      ],
+    },
+    {
+      // Long neon valley between two drops.
+      w: 1,
+      v: [
+        { name: 'intro', bars: 4 },
+        { name: 'drop', bars: 8 },
+        { name: 'break', bars: 12 },
+        { name: 'build', bars: 4 },
+        { name: 'drop', bars: 8 },
+      ],
+    },
   ],
   progressions: [
     // Minor spacesynth loops, one chord per bar, last chord pulls home.
@@ -85,6 +125,11 @@ export const OUTRUN: GenreConfig = {
     { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 6, beats: 4 }, { degree: 5, beats: 4 }, { degree: 6, beats: 4 }] },
     { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 2, beats: 4 }, { degree: 5, beats: 4 }, { degree: 4, beats: 4 }] },
     { w: 1, v: [{ degree: 5, beats: 4 }, { degree: 6, beats: 4 }, { degree: 0, beats: 4 }, { degree: 0, beats: 4 }] },
+    // More neon movement.
+    { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 5, beats: 4 }, { degree: 6, beats: 4 }, { degree: 4, beats: 4 }] }, // i–VI–VII–v
+    { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 4, beats: 4 }, { degree: 5, beats: 4 }, { degree: 2, beats: 4 }] }, // i–v–VI–III
+    { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 6, beats: 4 }, { degree: 3, beats: 4 }, { degree: 4, beats: 4 }] }, // i–VII–iv–v
+    { w: 1, v: [{ degree: 5, beats: 4 }, { degree: 2, beats: 4 }, { degree: 0, beats: 4 }, { degree: 6, beats: 4 }] }, // VI–III–i–VII
   ],
   distinctProgressions: true,
   melody: {
@@ -98,16 +143,21 @@ export const OUTRUN: GenreConfig = {
     style: 'syncopated16',
     styles: [
       { w: 2, v: 'syncopated16' }, // sequenced spacesynth engine
-      { w: 1, v: 'octave8' },
+      { w: 2, v: 'octave8' },
+      { w: 1, v: 'synth8' }, // driving root-pump with octave pops
     ],
     register: [31, 45],
   },
   comping: { register: [52, 72], style: 'sustained' }, // analog pad bed
-  arp: { register: [57, 81], rate: 4, patterns: [{ w: 2, v: 'up' }, { w: 1, v: 'octaves' }] },
+  // Backing arp, not a second melody — lower register + just up/octaves so it
+  // doesn't wander through the lead's range and clash ("каконофония").
+  arp: { register: [52, 74], rate: 4, patterns: [{ w: 2, v: 'up' }, { w: 1, v: 'octaves' }] },
   drums: {
     patterns: [
-      { w: 2, v: OR_DRIVE },
-      { w: 1, v: OR_PULSE },
+      { w: 3, v: OR_DRIVE },
+      { w: 2, v: OR_PULSE },
+      { w: 2, v: OR_ELECTRO },
+      { w: 1, v: OR_RUSH },
     ],
     fillEvery: 8,
     fillStyle: 'toms', // the 80s tom cascade

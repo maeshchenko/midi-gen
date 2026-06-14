@@ -44,8 +44,12 @@ describe('track titles', () => {
       tune: '8eaef612',
       musicbox: '1cc23708',
       eurobeat: '11fb4fc0', // re-pinned 2026-06-12: outrun-style game arc (deliberate re-gen)
-      outrun: '9fff368f',
-      grimerun: '49b48b52',
+      outrun: '9cf5ca16',
+      grimerun: 'dba378a3',
+      doomerwave: 'a75ec1cc',
+      doomerrun: '3cf86c74',
+      nightcorerun: '29d93e0',
+      test: 'ca956238',
     };
     for (const genre of GENRE_IDS) {
       const fp = fnv1a32(JSON.stringify(generate({ genre, seed: 12345n }).tracks)).toString(16);

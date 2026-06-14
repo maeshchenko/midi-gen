@@ -24,6 +24,22 @@ exports[`dark academia > canary 1`] = `
 }
 `;
 
+exports[`doomerrun (post-punk rhythm-game lane) > canary 1`] = `
+{
+  "bpm": 133,
+  "code": "2Y00-0000-006G-1MQK",
+  "fingerprint": "2831da55",
+}
+`;
+
+exports[`doomerwave (song form, post-punk) > canary 1`] = `
+{
+  "bpm": 121,
+  "code": "2W00-0000-000D-03BM",
+  "fingerprint": "e7f225a4",
+}
+`;
+
 exports[`eurobeat > canary 1`] = `
 {
   "bpm": 154,
@@ -44,7 +60,7 @@ exports[`grimerun > canary 1`] = `
 {
   "bpm": 137,
   "code": "2T00-0000-0006-F283",
-  "fingerprint": "776dceb4",
+  "fingerprint": "fc0d5bc2",
 }
 `;
 
@@ -72,6 +88,14 @@ exports[`nightcore > canary 1`] = `
 }
 `;
 
+exports[`nightcorerun (nightcore rhythm-game lane) > canary 1`] = `
+{
+  "bpm": 181,
+  "code": "3000-0000-000W-1QPP",
+  "fingerprint": "d47587f5",
+}
+`;
+
 exports[`noir (dark jazz, spec) > canary 1`] = `
 {
   "bpm": 73,
@@ -84,7 +108,7 @@ exports[`outrun > canary 1`] = `
 {
   "bpm": 124,
   "code": "2R00-0000-0000-0WPD",
-  "fingerprint": "ba162f08",
+  "fingerprint": "ba2116b1",
 }
 `;
 

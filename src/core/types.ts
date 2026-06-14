@@ -13,6 +13,10 @@ export const GENRE_IDS = [
   'eurobeat',
   'outrun',
   'grimerun',
+  'doomerwave',
+  'doomerrun',
+  'nightcorerun',
+  'test',
 ] as const;
 
 export type GenreId = (typeof GENRE_IDS)[number];

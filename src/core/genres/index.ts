@@ -14,6 +14,10 @@ import { MUSICBOX } from './musicbox';
 import { EUROBEAT } from './eurobeat';
 import { OUTRUN } from './outrun';
 import { GRIMERUN } from './grimerun';
+import { DOOMERWAVE } from './doomerwave';
+import { DOOMERRUN } from './doomerrun';
+import { NIGHTCORERUN } from './nightcorerun';
+import { TEST } from './test';
 
 /**
  * Implemented genres. ('phonk' is the third drift-phonk attempt, built to the
@@ -34,6 +38,10 @@ export const GENRES: Partial<Record<GenreId, GenreConfig>> = {
   eurobeat: EUROBEAT,
   outrun: OUTRUN,
   grimerun: GRIMERUN,
+  doomerwave: DOOMERWAVE,
+  doomerrun: DOOMERRUN,
+  nightcorerun: NIGHTCORERUN,
+  test: TEST,
 };
 
 export function getGenre(id: GenreId): GenreConfig {

@@ -24,6 +24,32 @@ const RUN_BUSY: StepPattern = {
   hatOpen: [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0],
 };
 
+// Skippy 2-step bounce — kick chases the offbeats, snare gets a ghost pickup.
+const RUN_SKIPPY: StepPattern = {
+  name: 'run-skippy',
+  kick: [1, 0, 0, 0, 0, 0, 0.7, 0, 0, 0.6, 0, 0, 0.7, 0, 0, 0],
+  snare: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0.4, 0, 0, 0, 0],
+  hatClosed: [0.8, 0, 0.6, 0.4, 0.8, 0, 0.6, 0, 0.8, 0.4, 0.6, 0, 0.8, 0, 0.6, 0.4],
+  hatOpen: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+};
+
+// Rolling double-time hats — busiest variant, drives the drops.
+const RUN_ROLLER: StepPattern = {
+  name: 'run-roller',
+  kick: [1, 0, 0, 0, 0, 0, 0, 0.7, 1, 0, 0, 0.6, 0, 0, 0.6, 0],
+  snare: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+  hatClosed: [0.9, 0.6, 0.6, 0.6, 0.9, 0.6, 0.6, 0.6, 0.9, 0.6, 0.6, 0.6, 0.9, 0.6, 0.6, 0.6],
+  hatOpen: [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0],
+};
+
+// Sparse stepper — fewer kicks, room to breathe (intro/break feel).
+const RUN_STEPPER: StepPattern = {
+  name: 'run-stepper',
+  kick: [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+  snare: [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
+  hatClosed: [0.8, 0, 0, 0, 0.6, 0, 0, 0, 0.8, 0, 0, 0, 0.6, 0, 0.5, 0],
+};
+
 export const GRIMERUN: GenreConfig = {
   id: 'grimerun',
   name: 'Grime Run',
@@ -74,14 +100,40 @@ export const GRIMERUN: GenreConfig = {
         { name: 'drop', bars: 8 },
       ],
     },
+    {
+      // Long peak: one extended 16-bar drop (single drop — loops break→intro).
+      w: 1,
+      v: [
+        { name: 'intro', bars: 4 },
+        { name: 'build', bars: 8 },
+        { name: 'drop', bars: 16 },
+        { name: 'break', bars: 8 },
+      ],
+    },
+    {
+      // Two short drops around a long valley.
+      w: 1,
+      v: [
+        { name: 'intro', bars: 4 },
+        { name: 'drop', bars: 8 },
+        { name: 'break', bars: 12 },
+        { name: 'build', bars: 4 },
+        { name: 'drop', bars: 8 },
+      ],
+    },
   ],
   progressions: [
     // Dark grime vamps — two chords, menace over movement.
     { w: 3, v: [{ degree: 0, beats: 8 }, { degree: 5, beats: 8 }] },
     { w: 2, v: [{ degree: 0, beats: 8 }, { degree: 3, beats: 8 }] },
-    { w: 2, v: [{ degree: 0, beats: 8 }, { degree: 1, beats: 8 }] },
+    { w: 2, v: [{ degree: 0, beats: 8 }, { degree: 1, beats: 8 }] }, // phrygian bII menace
     { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 1, beats: 4 }] },
     { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 3, beats: 4 }, { degree: 0, beats: 4 }, { degree: 5, beats: 4 }] },
+    // More movement — four-chord descents and minor turns.
+    { w: 2, v: [{ degree: 0, beats: 4 }, { degree: 6, beats: 4 }, { degree: 5, beats: 4 }, { degree: 6, beats: 4 }] }, // i–VII–VI–VII
+    { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 5, beats: 4 }, { degree: 6, beats: 4 }, { degree: 5, beats: 4 }] }, // i–VI–VII–VI
+    { w: 1, v: [{ degree: 0, beats: 4 }, { degree: 3, beats: 4 }, { degree: 4, beats: 4 }, { degree: 4, beats: 4 }] }, // i–iv–v–v
+    { w: 1, v: [{ degree: 0, beats: 8 }, { degree: 6, beats: 8 }] }, // i–VII drone
   ],
   distinctProgressions: true,
   melody: {
@@ -95,8 +147,11 @@ export const GRIMERUN: GenreConfig = {
   comping: { register: [48, 65] },
   drums: {
     patterns: [
-      { w: 2, v: RUN_HALFTIME },
-      { w: 1, v: RUN_BUSY },
+      { w: 3, v: RUN_HALFTIME },
+      { w: 2, v: RUN_BUSY },
+      { w: 2, v: RUN_SKIPPY },
+      { w: 2, v: RUN_ROLLER },
+      { w: 1, v: RUN_STEPPER },
     ],
     fillEvery: 8,
     rollProb: 0.35,

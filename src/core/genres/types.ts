@@ -78,7 +78,9 @@ export type BassStyle =
   | 'march'
   | 'sustain'
   | 'octave8'
-  | 'syncopated16';
+  | 'syncopated16'
+  | 'gallop'
+  | 'chug';
 
 export interface GenreConfig {
   id: GenreId;
