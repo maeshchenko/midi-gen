@@ -1,6 +1,7 @@
 import * as Tone from 'tone';
 import { PPQ, type Song } from '../core/types';
 import { buildEnsemble, type Ensemble } from './instruments';
+import { perform } from './perform';
 
 /**
  * Live Web Audio underruns ("хрип/треск") when the output buffer is tiny — the
@@ -54,7 +55,7 @@ export interface Player {
  * point sits exactly at durationTicks — synth releases and delay tails ring
  * over the seam, which is what makes it sound continuous.
  */
-export function createPlayer(song: Song, opts: { loop?: boolean } = {}): Player {
+export function createPlayer(song: Song, opts: { loop?: boolean; real?: boolean } = {}): Player {
   const secPerTick = 60 / song.bpm / PPQ;
   const durationSec = song.durationTicks * secPerTick;
   const TAIL = 1.5;
@@ -87,18 +88,27 @@ export function createPlayer(song: Song, opts: { loop?: boolean } = {}): Player 
   };
 
   const build = () => {
-    ensemble = buildEnsemble(song);
+    const real = opts.real ?? false;
+    ensemble = buildEnsemble(song, { real });
     parts = song.tracks.map((track, i) => {
       const voice = ensemble!.voices[i]!;
-      const events = track.notes.map((n) => ({
-        time: n.start * secPerTick,
-        pitch: n.pitch,
-        dur: Math.max(0.02, n.dur * secPerTick),
-        vel: n.vel / 127,
-        slide: n.slide,
-      }));
+      // Real mode plays a humanized performance; otherwise the raw grid.
+      const events = real
+        ? perform(track, song)
+        : track.notes.map((n) => ({
+            time: n.start * secPerTick,
+            pitch: n.pitch,
+            dur: Math.max(0.02, n.dur * secPerTick),
+            vel: n.vel / 127,
+            slide: n.slide,
+          }));
       const part = new Tone.Part((time, ev) => {
-        voice.trigger(ev.pitch, time, ev.dur, ev.vel, ev.slide);
+        // One bad trigger must not throw out of the Transport callback.
+        try {
+          voice.trigger(ev.pitch, time, ev.dur, ev.vel, ev.slide);
+        } catch {
+          /* drop this note */
+        }
       }, events);
       part.start(0);
       return part;

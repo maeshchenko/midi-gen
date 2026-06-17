@@ -4,7 +4,7 @@
 
 **16 жанров:** Classic Keygen · Grime · Drift Phonk · Noir (dark jazz) · Anime Opening · Blues · Military Parade · Dark Academia · Nightcore · Music Box · Eurobeat · Outrun · Grime Run · Doomerwave · Doomer Run · Nightcore Run.
 
-Звук синтезируется в браузере (Tone.js), сэмплы не используются. Экспорт: `.mid`, `.wav`, `.mp3`.
+Звук — в браузере (Tone.js). Галочка **REAL** (справа от RADIO, по умолчанию выкл.) включает «живой» режим: реальные сэмплы инструментов + грув/динамика/микс поверх грид-IR — только для прослушивания и экспорта; MIDI и игровой API остаются на сетке. Без REAL — чистый синтез. Реализовано для nightcorerun, noir, dark academia (остальные — синт-fallback). Подробности: [docs/REAL_AUDIO.md](docs/REAL_AUDIO.md). Экспорт: `.mid`, `.wav`, `.mp3`.
 
 ## Запустить
 

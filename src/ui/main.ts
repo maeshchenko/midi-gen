@@ -64,6 +64,7 @@ function initApp(): void {
         <button id="next" disabled title="next track in the seed chain">⏭ NEXT</button>
         <label class="loop-label"><input type="checkbox" id="loop" checked /> LOOP</label>
         <label class="loop-label" title="auto-advance to the next track"><input type="checkbox" id="radio" /> RADIO</label>
+        <label class="loop-label" title="real sampled instruments"><input type="checkbox" id="real" /> REAL</label>
       </div>
 
       <div class="row transport">
@@ -99,6 +100,7 @@ function initApp(): void {
     next: document.querySelector<HTMLButtonElement>('#next')!,
     loop: document.querySelector<HTMLInputElement>('#loop')!,
     radio: document.querySelector<HTMLInputElement>('#radio')!,
+    real: document.querySelector<HTMLInputElement>('#real')!,
     saveMid: document.querySelector<HTMLButtonElement>('#save-mid')!,
     saveWav: document.querySelector<HTMLButtonElement>('#save-wav')!,
     saveMp3: document.querySelector<HTMLButtonElement>('#save-mp3')!,
@@ -232,7 +234,7 @@ function initApp(): void {
   el.play.addEventListener('click', () => {
     if (!song) return;
     if (!player) {
-      player = createPlayer(song, { loop: el.loop.checked });
+      player = createPlayer(song, { loop: el.loop.checked, real: el.real.checked });
       player.onEnded = () => {
         // Defer out of Tone's event processing before dispose/transport.cancel.
         if (el.radio.checked) {
@@ -263,6 +265,20 @@ function initApp(): void {
     if (el.radio.checked) {
       el.loop.checked = false;
       player?.setLoop(false);
+    }
+  });
+
+  // The ensemble graph (synth vs sampled voices) is fixed at build time, so
+  // toggling REAL must rebuild the player — dispose and recreate on next play.
+  el.real.addEventListener('change', () => {
+    const wasPlaying = player?.isPlaying() ?? false;
+    player?.dispose();
+    player = null;
+    // play is disabled mid-playback, and a disabled button ignores click() —
+    // re-enable it first so the rebuilt (synth/real) ensemble resumes.
+    if (wasPlaying) {
+      el.play.disabled = false;
+      el.play.click();
     }
   });
 
@@ -298,7 +314,7 @@ function initApp(): void {
   });
 
   el.saveWav.addEventListener('click', () => {
-    void runExport(el.saveWav, 'wav', () => renderToWav(song!));
+    void runExport(el.saveWav, 'wav', () => renderToWav(song!, { real: el.real.checked }));
   });
 
   el.embed.addEventListener('click', () => {
@@ -314,6 +330,7 @@ function initApp(): void {
   el.saveMp3.addEventListener('click', () => {
     void runExport(el.saveMp3, 'mp3', () =>
       renderToMp3(song!, {
+        real: el.real.checked,
         onProgress: (v) => {
           el.exportStatus.textContent = v < 0.4 ? 'rendering .mp3…' : `encoding .mp3… ${Math.round(v * 100)}%`;
         },

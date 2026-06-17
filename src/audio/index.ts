@@ -16,6 +16,6 @@ export { renderSong } from './offline';
 export { audioBufferToWav } from './encode/wav';
 
 /** Render a song offline and pack it as a WAV blob. */
-export async function renderToWav(song: Song): Promise<Blob> {
-  return audioBufferToWav(await renderSong(song));
+export async function renderToWav(song: Song, opts: { real?: boolean } = {}): Promise<Blob> {
+  return audioBufferToWav(await renderSong(song, { real: opts.real }));
 }

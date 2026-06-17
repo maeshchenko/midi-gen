@@ -1,5 +1,58 @@
 # CHANGELOG
 
+## 2026-06-17 — REAL-режим: реальные сэмплы + «живой» исполнительский слой
+
+- **Запрос:** «навесить реальные звуки инструментов, чтобы звучало как живая песня». Затем итеративно: гитара/бас механические → noir/dark academia → фиксы (низ виолончели «расстроен», барабаны «сбиваются» в build).
+- **Принцип (ключевое решение):** REAL — **чисто аудио-слой**, применяется ТОЛЬКО на прослушивании и экспорте .wav/.mp3. `Song` IR / `songToMidi` / игровой API — не трогаются (игра получает грид-MIDI как раньше). Весь код в `src/audio/**` + `public/samples/`, **ноль правок в `src/core/**`** → инвариант 14. Галочка `#real` **default OFF** (синтез — базовый режим); программа без сэмпла → синт-fallback.
+
+### Архитектура (3 подсистемы, downstream от IR)
+- **① Sample engine** (`samples.ts`, `instruments.ts`): нативные `Tone.Sampler`/`Tone.Player` ВНУТРИ Tone-графа (не smplr — он не Tone-нода, обошёл бы master-FX/filter-automation/`Tone.Offline`). `makeSampler` (cab-sim/палм-мьют/вибрато/double-track/velocity-яркость), `makeRealDrumKit` (velocity-слои + round-robin + пер-лейн панорама).
+- **② Performance pass** (`perform.ts`, чистая фн, детерм. от `song.seed`): грув-тайминг, метрические акценты/динамика, длина↔велосити + legato. Вызывается в player/offline ТОЛЬКО при real.
+- **③ Mix** (`buildEnsemble`): общий `Tone.Reverb` send-шина + пер-голос `Panner`/send (`VOICE_PAN`/`VOICE_SEND`).
+- Проброс флага: `createPlayer` → `renderSong` → `renderToWav/Mp3`. UI `#real` + dispose-rebuild при переключении.
+
+### Решения / почему так
+- **`Tone.Sampler` (native), не smplr/soundfont-player:** живёт в Tone-графе → мастер-FX, filter-automation (через `voice.cutoff`) и offline-экспорт работают без переделки. smplr бы всё это обошёл.
+- **Hybrid fallback:** real-маппинг только по GM-program (`REAL_PROGRAM_MAP`), остальное — старый синт. Безопасно держать REAL включённым на всех жанрах.
+- **Cab-симуляция (HP+LP после дисторшна)** — #1 фикс «фейковой» гитары/баса: сырой `Tone.Distortion` = жужжащий DI, кабинет → миканый ампель.
+- **Round-robin + velocity-слои** на барабанах: идентичный буфер каждый удар = «пулемёт»; слои дают РАЗНЫЙ тембр на силу удара, не только громкость. Докачаны VCSL vel/rr-варианты (в первой версии отброшены).
+- **Богатый бюджет сэмплов** (выбор пользователя ~40MB, lazy по жанру) — приоритет реализма.
+
+### Альтернативы (отвергнуты)
+- **smplr / soundfont-player** — не Tone-ноды, ломают граф/экспорт. Отказ.
+- **GM-soundfont на всё (gleitz/FluidR3)** — для метала звучит дёшево + per-note .js base64, нет drum-кита. Отказ; точечные мультисэмплы (tonejs CC-BY) + VCSL CC0.
+- **smplr drum-machines** (808/909) — электронные, не подходят под power-metal nightcorerun. Взят VCSL акустический кит (CC0).
+- **Псевдо-rr для питча через 2 семплера** — `Tone.Sampler` НЕ имеет `detune`, идентичные буферы дают почти ноль вариации. Вместо этого: velocity→яркость + double-track + (у барабанов) `playbackRate`-детюн.
+
+### Грабли (уроки — полный список в `docs/REAL_AUDIO.md`)
+- **Throw внутри `Tone.Offline`-колбэка ВЕШАЕТ весь рендер намертво** (не реджектит). Симптом: экспорт .wav вечно «rendering…». → ВСЕ `voice.trigger` (player/offline) и `makeRealDrumKit` в try/catch. Источник throw — `Tone.Player.start()` «Start time must be strictly greater…» (+ монотонный guard per-file).
+- **disabled `<button>` игнорирует `.click()`** — toggle REAL во время игры не возобновлял; re-enable play перед кликом.
+- **Разреженная сэмпловка низа** (мажор-терции) → большой репитч низкой струны = резиновый «расстроенный» бас (жалоба на виолончель). → плотная сэмпловка ≈целый тон в низком регистре + вибрато 0.1→0.04.
+- **Velocity-джиттер у порога слоёв** + крещендо в build → тембр снейра флипал между сэмплами = «барабаны сбиваются». → гистерезис слоёв (запас 0.06) + барабаны держать тугими (джиттер 4→1.5мс, velSpread 0.1→0.05).
+- **`Tone.Panner` схлопывает стерео в моно** — стерео-источники (драм-кит, double-track гитара) роутят в `bus` сами, не через внешний моно-Panner.
+
+### Сэмплы / источники
+- **tonejs-instruments (CC-BY 3.0):** guitar-electric, bass-electric, violin, contrabass, cello, trumpet.
+- **VCSL (CC0):** metal drum-кит (vel-слои + rr), vibraphone. Всё → mono 128k mp3, `public/samples/`, lazy по жанру. Атрибуция: `public/samples/CREDITS.md`.
+
+### Жанры (статус)
+- **nightcorerun** (power-metal, не электроника — правка пользователя): гитара(30) cab+double+палм-мьют, метал-бас(34) cab, струнные(48), скрипка-лид(40, докачаны высокие E6/G6/A6/C7); барабаны metal-кит RR+vel-слои.
+- **noir:** контрабас(32), виброфон(11), муте-труба(59 = trumpet + mute-фильтр); барабаны-щётки остаются синт (нет CC0 brush-китов).
+- **darkacademia:** виолончель(42, плотный низ), скрипка(40); клавесин(6) синт — нет CC-сэмплов клавесина нигде.
+- Остальные — синт-fallback.
+
+### Verification
+- `tsc` чисто, `vitest` 157/157 (core не затронут — снапшоты целы). `npm run build` ок.
+- В Chrome (MCP): live + offline-рендер .wav для nightcorerun/noir/darkacademia без ошибок и зависаний; стерео-ширина side/mid ≈1.2 (было ~0 моно); наборы грузятся lazy по жанру; toggle REAL↔синт пересобирает граф и возобновляет игру.
+
+### Известные ограничения
+- Питч-инструменты: настоящих velocity-слоёв нет (источник CC = 1 сэмпл/ноту) — тембр эмулируется фильтром/драйвом.
+- `nightcore.ts` doc-коммент описывает eurodance, хотя автор считает семейство power-metal — конфиг ещё электронный, требует сверки (отложено, `docs/STYLES.md` TODO).
+- Барабаны-щётки (noir) и клавесин (darkacademia) — синт, нет CC0-сэмплов.
+
+### Урок (для будущих агентов)
+Перед любой правкой real-аудио читать `docs/REAL_AUDIO.md` (что/как/зачем + грабли + tuning-ручки) и инвариант 14 в AGENTS. Главное: trigger не должен бросать (вешает offline-рендер), и `src/core/**` не трогать.
+
 ## 2026-06-15 — Eurobeat: обогащение и разнообразие
 
 - **Запрос:** «обогати и разнообразь eurobeat».

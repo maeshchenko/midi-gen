@@ -1,5 +1,7 @@
 /**
- * Tone.js voices for song tracks. Pure synthesis — no samples, no network.
+ * Tone.js voices for song tracks. Synthesis by default; the "real" mode swaps
+ * in sampled instruments (Tone.Sampler / Tone.Players from /samples — see
+ * samples.ts), falling back to synth for any program without a sample.
  *
  * Nodes are created against the CURRENT Tone context: call buildEnsemble()
  * live for playback, or inside Tone.Offline() for rendering — same code path
@@ -10,6 +12,13 @@ import * as Tone from 'tone';
 import { PPQ, type Song, type Track } from '../core/types';
 import { GM_DRUMS } from '../core/gen/drums';
 import { getGenre } from '../core/genres';
+import {
+  SAMPLE_SETS,
+  REAL_PROGRAM_MAP,
+  REAL_DRUM_KITS,
+  type SampleSetDef,
+  type DrumKitDef,
+} from './samples';
 
 export interface Voice {
   trigger(pitch: number, timeSec: number, durSec: number, velocity: number, slide?: boolean): void;
@@ -40,6 +49,20 @@ function monoGuard(trigger: Voice['trigger']): Voice['trigger'] {
     if (t <= last + 0.002) t = last + 0.002;
     last = t;
     trigger(p, t, d, v);
+  };
+}
+
+/**
+ * Deterministic 0..1 PRNG (mulberry32) for per-hit micro-variation (detune,
+ * gain wobble). Deterministic so offline render matches live preview exactly.
+ */
+function makeRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 
@@ -170,9 +193,9 @@ function makeBass808(out: Tone.ToneAudioNode): Voice {
     filter: { type: 'lowpass', Q: 0.5 },
     filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 1, release: 0.1, baseFrequency: 350, octaves: 0.5 },
   });
-  synth.volume.value = -6; // was -1 (way too hot — slammed the master into LF distortion)
-  const dist = new Tone.Distortion(0.4); // harmonics so the sub reads on small speakers
-  dist.wet.value = 0.3;
+  synth.volume.value = -2;
+  const dist = new Tone.Distortion(0.45); // harmonics so the sub reads on small speakers
+  dist.wet.value = 0.33;
   synth.chain(dist, out);
   return {
     trigger: monoGuard((p, t, d, v) => synth.triggerAttackRelease(midiHz(p), d, t, v)),
@@ -669,9 +692,7 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
             envelope: { attack: 0.003, decay: 0.35, sustain: 0.01, release: 0.4 },
           },
   );
-  // -8 (was -4): kick alone was just under the ceiling, so kick+snare/hat summed
-  // OVER it → the limiter gain-reduced the kick's low end into a "fart". Headroom.
-  kick.volume.value = opts.dullKick ? -8 : opts.softKick ? -6 : -8;
+  kick.volume.value = opts.dullKick ? -8 : opts.softKick ? -4 : -2;
   // Tame the click transient on the soft kick without gutting the body (320Hz).
   const kickFilter = opts.dullKick
     ? new Tone.Filter(180, 'lowpass')
@@ -851,8 +872,276 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
   };
 }
 
-function voiceForTrack(track: Track, bpm: number, out: Tone.ToneAudioNode): Voice {
+interface SamplerStereo {
+  bus: Tone.ToneAudioNode;
+  reverb: Tone.ToneAudioNode;
+  send: number;
+  spread: number;
+}
+
+/**
+ * Real-instrument voice from a pitched multisample, with the processing a real
+ * instrument implies:
+ *  - cabinet sim (hp+lp after distortion) so overdriven guitar/bass read as a
+ *    miked amp, not fizzy DI;
+ *  - palm-mute: short notes play dark/tight (chug), long notes ring open;
+ *  - velocity-brightness: harder = brighter timbre, not just louder;
+ *  - vibrato: pitch wobble that makes a solo string sound alive;
+ *  - double-tracking: two takes hard L/R with a Haas offset (metal width).
+ * Timing/dynamics come from the performance pass (perform.ts).
+ */
+function makeSampler(
+  def: SampleSetDef,
+  out: Tone.ToneAudioNode,
+  exposeCutoff = false,
+  stereo?: SamplerStereo,
+): Voice {
+  const useStereo = !!(def.doubleTrack && stereo);
+  const dynamic = !exposeCutoff; // free to drive the lowpass from note dynamics
+  const created: Tone.ToneAudioNode[] = [];
+
+  // Build one signal path (sampler → vibrato → distortion → cab hp → bright lp)
+  // ending at `dest`. The bright lowpass doubles as cab lp and is modulated.
+  const buildPath = (dest: Tone.ToneAudioNode) => {
+    const sampler = new Tone.Sampler({
+      urls: def.urls,
+      baseUrl: def.baseUrl,
+      release: def.release ?? 0.4,
+      attack: def.attack ?? 0,
+    });
+    sampler.volume.value = def.volumeDb ?? -6;
+    const chain: Tone.ToneAudioNode[] = [];
+    if (def.vibrato) {
+      const vib = new Tone.Vibrato(def.vibrato.rate, def.vibrato.depth);
+      chain.push(vib);
+    }
+    if (def.distortion) {
+      const dist = new Tone.Distortion(def.distortion);
+      dist.oversample = '2x';
+      dist.wet.value = 0.9;
+      chain.push(dist);
+    }
+    if (def.cab) chain.push(new Tone.Filter(def.cab.hp, 'highpass'));
+    const bright = new Tone.Filter(def.cab?.lp ?? (exposeCutoff ? 12000 : 16000), 'lowpass');
+    chain.push(bright);
+    sampler.chain(...chain, dest);
+    created.push(sampler, ...chain);
+    return { sampler, bright };
+  };
+
+  const paths: { sampler: Tone.Sampler; bright: Tone.Filter }[] = [];
+  if (useStereo) {
+    for (let i = 0; i < 2; i++) {
+      const pan = new Tone.Panner(i === 0 ? -stereo!.spread : stereo!.spread);
+      pan.connect(stereo!.bus);
+      created.push(pan);
+      if (stereo!.send > 0) {
+        const g = new Tone.Gain(stereo!.send);
+        pan.connect(g);
+        g.connect(stereo!.reverb);
+        created.push(g);
+      }
+      paths.push(buildPath(pan));
+    }
+  } else {
+    paths.push(buildPath(out));
+  }
+
+  const brightHzFor = (d: number, v: number): number => {
+    let hz: number;
+    if (def.palmMute) {
+      const open = Math.min(1, d / 0.22); // <220ms note = palm-muted chug
+      hz = 1100 + 5000 * open * (0.55 + 0.45 * v);
+    } else {
+      hz = 2200 + 13800 * Math.min(1, v * v);
+    }
+    return def.cab ? Math.min(hz, def.cab.lp) : hz;
+  };
+
+  let trigger: Voice['trigger'] = (p, t, d, v) => {
+    const hz = brightHzFor(d, v);
+    paths.forEach((path, i) => {
+      if (dynamic) {
+        try {
+          path.bright.frequency.setValueAtTime(hz, Math.max(0, t - 0.001));
+        } catch {
+          /* coalesced automation point — ignore */
+        }
+      }
+      // Right track lands a hair late — Haas widening for the double-track.
+      const tt = useStereo && i === 1 ? t + 0.012 : t;
+      path.sampler.triggerAttackRelease(midiHz(p), Math.max(0.05, d), tt, v);
+    });
+  };
+  if (def.monophonic) trigger = monoGuard(trigger);
+
+  return {
+    trigger,
+    cutoff: useStereo ? undefined : paths[0]!.bright.frequency,
+    ready: Tone.loaded(),
+    dispose: () => {
+      for (const n of created) n.dispose();
+    },
+  };
+}
+
+/**
+ * Real drum kit from velocity-layered round-robin one-shots (Tone.Players),
+ * keyed by GM drum note — same trigger contract as makeDrumKit. Velocity picks
+ * the layer (timbre), round-robin cycles variants (no immediate repeat → no
+ * machine-gun), and each hit gets a touch of detune + gain wobble.
+ */
+// Per-voice stereo placement + reverb send (real mode), by track role.
+const VOICE_PAN: Record<string, number> = { chords: 0.22, arp: -0.2, counter: 0.3, lead: 0, bass: 0 };
+const VOICE_SEND: Record<string, number> = {
+  lead: 0.2,
+  chords: 0.32,
+  bass: 0.04,
+  arp: 0.12,
+  drums: 0.08,
+  counter: 0.2,
+  fx: 0.16,
+};
+
+// Stereo placement of each drum lane — "overheads" width that makes a kit feel
+// like a real room rather than a centered machine.
+const DRUM_LANE_PAN: Record<string, number> = {
+  kick: 0,
+  snare: 0,
+  hatClosed: 0.22,
+  hatOpen: 0.28,
+  crash: -0.35,
+  tomHigh: 0.3,
+  tomLow: -0.3,
+  clap: -0.18,
+};
+
+function makeRealDrumKit(
+  out: Tone.ToneAudioNode,
+  def: DrumKitDef,
+  opts: { onKick?: (timeSec: number) => void; reverb?: Tone.ToneAudioNode; send?: number } = {},
+): Voice {
+  // Per-lane panner → kit sum → out (+ optional reverb send). Individual
+  // Tone.Players (not the Players collection) so each lane can be placed.
+  const kitGain = new Tone.Gain(1);
+  kitGain.connect(out);
+  let sendGain: Tone.Gain | null = null;
+  if (opts.reverb && opts.send && opts.send > 0) {
+    sendGain = new Tone.Gain(opts.send);
+    kitGain.connect(sendGain);
+    sendGain.connect(opts.reverb);
+  }
+  const lanePanners: Record<string, Tone.Panner> = {};
+  for (const laneName of Object.keys(def.lanes)) {
+    const p = new Tone.Panner(DRUM_LANE_PAN[laneName] ?? 0);
+    p.connect(kitGain);
+    lanePanners[laneName] = p;
+  }
+  const fileToPlayer: Record<string, Tone.Player> = {};
+  for (const [laneName, lane] of Object.entries(def.lanes))
+    for (const layer of lane.layers)
+      for (const f of layer.rr) {
+        const key = f.replace(/\.mp3$/, '');
+        const pl = new Tone.Player({ url: def.baseUrl + f, volume: -3 });
+        pl.connect(lanePanners[laneName]!);
+        fileToPlayer[key] = pl;
+      }
+
+  const NOTE_TO_LANE: Record<number, string> = {
+    [GM_DRUMS.kick]: 'kick',
+    [GM_DRUMS.snare]: 'snare',
+    [GM_DRUMS.hatClosed]: 'hatClosed',
+    [GM_DRUMS.hatOpen]: 'hatOpen',
+    [GM_DRUMS.crash]: 'crash',
+    [GM_DRUMS.ride]: 'crash',
+    [GM_DRUMS.tomHigh]: 'tomHigh',
+    [GM_DRUMS.tomMid]: 'tomLow',
+    [GM_DRUMS.tomLow]: 'tomLow',
+    [GM_DRUMS.clap]: 'clap',
+    [GM_DRUMS.tambourine]: 'hatClosed',
+    [GM_DRUMS.shaker]: 'hatClosed',
+  };
+
+  const rng = makeRng(0x9e3779b9);
+  const lastRr = new Map<string, number>(); // `${lane}:${layer}` → last rr index
+  const lastLayer = new Map<string, number>(); // lane → last velocity layer (hysteresis)
+  const lastStart = new Map<string, number>(); // file → last start (Player guard)
+
+  return {
+    ready: Tone.loaded(),
+    trigger: (pitch, t, _d, v) => {
+      const lane = NOTE_TO_LANE[pitch];
+      if (!lane) return;
+      const laneDef = def.lanes[lane];
+      if (!laneDef) return;
+      v = Math.max(0.06, Math.min(1, v));
+      // velocity → layer (timbre)
+      let li = laneDef.layers.findIndex((l) => v <= l.vMax);
+      if (li < 0) li = laneDef.layers.length - 1;
+      // Hysteresis: don't flip to an adjacent layer when sitting right on a
+      // threshold (velocity jitter on a crescendo roll → stuttering timbre).
+      const prevLi = lastLayer.get(lane);
+      if (prevLi !== undefined && Math.abs(li - prevLi) === 1) {
+        const boundary = laneDef.layers[Math.min(li, prevLi)]!.vMax;
+        if (Math.abs(v - boundary) < 0.06) li = prevLi;
+      }
+      lastLayer.set(lane, li);
+      const layer = laneDef.layers[li]!;
+      // round-robin → next variant, never the previous one
+      const key = `${lane}:${li}`;
+      const prev = lastRr.get(key);
+      const ri = prev === undefined ? 0 : (prev + 1) % layer.rr.length;
+      lastRr.set(key, ri);
+      const file = layer.rr[ri]!.replace(/\.mp3$/, '');
+      const pl = fileToPlayer[file];
+      if (!pl) return;
+      // monotonic guard per file (a Tone.Player rejects start <= its last start)
+      const ls = lastStart.get(file) ?? -1;
+      if (t <= ls + 0.002) t = ls + 0.002;
+      lastStart.set(file, t);
+      pl.volume.value = Tone.gainToDb(0.5 + 0.5 * v) + (rng() - 0.5); // ±0.5 dB
+      pl.playbackRate = 1 + (rng() - 0.5) * 0.012; // ±~10 cents detune
+      // An uncaught throw inside an offline-render callback HANGS the render.
+      try {
+        pl.start(t);
+      } catch {
+        return;
+      }
+      if (lane === 'kick') opts.onKick?.(t);
+    },
+    dispose: () => {
+      for (const pl of Object.values(fileToPlayer)) pl.dispose();
+      for (const p of Object.values(lanePanners)) p.dispose();
+      sendGain?.dispose();
+      kitGain.dispose();
+    },
+  };
+}
+
+function voiceForTrack(
+  track: Track,
+  bpm: number,
+  out: Tone.ToneAudioNode,
+  real: boolean,
+  autoTarget?: 'lead' | 'arp' | 'master',
+  stereoCtx?: { bus: Tone.ToneAudioNode; reverb: Tone.ToneAudioNode },
+): Voice {
   if (track.role === 'drums') return makeDrumKit(out);
+  if (real) {
+    const set = REAL_PROGRAM_MAP[track.program];
+    if (set) {
+      const def = SAMPLE_SETS[set];
+      // Only hand the cutoff to automation if THIS genre automates this role;
+      // otherwise the sampler uses the filter for velocity-brightness.
+      const exposeCutoff = autoTarget === track.role;
+      const stereo =
+        def.doubleTrack && stereoCtx
+          ? { bus: stereoCtx.bus, reverb: stereoCtx.reverb, send: VOICE_SEND[track.role] ?? 0.12, spread: 0.75 }
+          : undefined;
+      return makeSampler(def, out, exposeCutoff, stereo);
+    }
+    // No real sample for this program → fall through to the synth voice.
+  }
   switch (track.program) {
     case 80:
       return makeSquareLead(out, bpm);
@@ -1021,13 +1310,14 @@ function buildFilterAutomations(
   return automations;
 }
 
-export function buildEnsemble(song: Song): Ensemble {
+export function buildEnsemble(song: Song, opts: { real?: boolean } = {}): Ensemble {
+  const real = opts.real ?? false;
   const spec = getGenre(song.genre).filterAutomation;
   // Headroom: drive the master bus below 0dBFS so hot kick+bass transients don't
   // slam the limiter into low-frequency distortion (the "blown speaker / electrical
   // crackle" the user heard). A subsonic high-pass removes inaudible <30Hz energy
   // that otherwise eats headroom and over-excurses the cone.
-  const bus = new Tone.Gain(0.5);
+  const bus = new Tone.Gain(0.9); // restored loudness (the crackle was real-time underrun, not level)
   const subCut = new Tone.Filter(30, 'highpass');
   // 'master' target gets its own automatable filter at the head of the chain.
   const masterFilter =
@@ -1036,12 +1326,38 @@ export function buildEnsemble(song: Song): Ensemble {
   // Slow attack (30ms > the kick's low-freq period) + soft knee so the bus
   // compressor doesn't follow the kick waveform and distort it ("fart") when
   // kick+snare/hat sum crosses the threshold.
-  const compressor = new Tone.Compressor({ threshold: -10, ratio: 2, attack: 0.03, release: 0.25, knee: 14 });
+  const compressor = new Tone.Compressor({ threshold: -14, ratio: 3, attack: 0.03, release: 0.25, knee: 8 });
   const limiter = new Tone.Limiter(-1);
   bus.chain(subCut, ...(masterFilter ? [masterFilter] : []), ...fx, compressor, limiter, Tone.getDestination());
 
   const isPhonk = song.genre === 'phonk';
   const extras: { dispose(): void }[] = [];
+
+  // Real mode: a shared stereo reverb send gives every voice the same room →
+  // depth and glue instead of a flat, dry, centered "demo" sound. wet:1 because
+  // it's a 100%-wet return fed by per-voice send gains.
+  const reverb = real ? new Tone.Reverb({ decay: 1.8, wet: 1 }) : null;
+  reverb?.connect(bus);
+  if (reverb) extras.push(reverb);
+
+  // Per-voice placement + reverb send (real mode). Returns the node a voice
+  // should output to. Mono sources (samplers/synths) get positioned; drums pan
+  // their own lanes internally and route to `bus` directly.
+  const spatials: { dispose(): void }[] = [];
+  const spatialOut = (role: string): Tone.ToneAudioNode => {
+    if (!real || !reverb) return bus;
+    const pan = new Tone.Panner(VOICE_PAN[role] ?? 0);
+    pan.connect(bus);
+    const send = VOICE_SEND[role] ?? 0.1;
+    if (send > 0) {
+      const g = new Tone.Gain(send);
+      pan.connect(g);
+      g.connect(reverb);
+      spatials.push(g);
+    }
+    spatials.push(pan);
+    return pan;
+  };
 
   // Noir spec: continuous foley bed — rain, vinyl crackle, brush stirring
   // (noise swelling in tempo). Always on, so the loop seam hides inside it.
@@ -1094,10 +1410,22 @@ export function buildEnsemble(song: Song): Ensemble {
   const voices = song.tracks.map((t) => {
     if (isPhonk && t.role === 'drums') return makeDrumKit(bus, { hatBus: duck!, onKick });
     if (isPhonk && t.role === 'lead') return makePhonkCowbell(duck!);
-    if (song.genre === 'noir' && t.role === 'drums') return makeDrumKit(bus, { dullKick: true });
-    if ((song.genre === 'doomerwave' || song.genre === 'doomerrun') && t.role === 'drums')
-      return makeDrumKit(bus, { softKick: true, gatedSnare: true });
-    return voiceForTrack(t, song.bpm, bus);
+    if (t.role === 'drums') {
+      const kit = real ? REAL_DRUM_KITS[song.genre] : undefined;
+      if (kit) return makeRealDrumKit(bus, kit, { onKick, reverb: reverb ?? undefined, send: VOICE_SEND.drums });
+      if (song.genre === 'noir') return makeDrumKit(bus, { dullKick: true });
+      if (song.genre === 'doomerwave' || song.genre === 'doomerrun')
+        return makeDrumKit(bus, { softKick: true, gatedSnare: true });
+      return makeDrumKit(bus);
+    }
+    return voiceForTrack(
+      t,
+      song.bpm,
+      spatialOut(t.role),
+      real,
+      spec?.target,
+      real && reverb ? { bus, reverb } : undefined,
+    );
   });
 
   // Genre filter automation (phonk underwater intro, keygen/nightcore arp
@@ -1110,6 +1438,7 @@ export function buildEnsemble(song: Song): Ensemble {
 
   const ready = Promise.all([
     ...fx.filter((n): n is Tone.Reverb => n instanceof Tone.Reverb).map((n) => n.ready),
+    ...(reverb ? [reverb.ready] : []),
     ...voices.map((v) => v.ready ?? Promise.resolve()),
   ]);
 
@@ -1119,6 +1448,7 @@ export function buildEnsemble(song: Song): Ensemble {
     ready,
     dispose: () => {
       for (const v of voices) v.dispose();
+      for (const s of spatials) s.dispose();
       for (const x of extras) x.dispose();
       bus.dispose();
       subCut.dispose();

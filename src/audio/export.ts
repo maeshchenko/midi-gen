@@ -2,12 +2,14 @@ import type { Song } from '../core/types';
 import { renderSong } from './offline';
 import { audioBufferToWav } from './encode/wav';
 
-export async function renderToWav(song: Song): Promise<Blob> {
-  return audioBufferToWav(await renderSong(song));
+export async function renderToWav(song: Song, opts: { real?: boolean } = {}): Promise<Blob> {
+  return audioBufferToWav(await renderSong(song, { real: opts.real }));
 }
 
 export interface Mp3Options {
   bitrate?: number;
+  /** Use real sampled instruments (default true). */
+  real?: boolean;
   /** 0..1 across render+encode. */
   onProgress?: (value: number) => void;
 }
@@ -15,7 +17,7 @@ export interface Mp3Options {
 export async function renderToMp3(song: Song, opts: Mp3Options = {}): Promise<Blob> {
   const bitrate = opts.bitrate ?? 192;
   opts.onProgress?.(0.05);
-  const buffer = await renderSong(song);
+  const buffer = await renderSong(song, { real: opts.real });
   opts.onProgress?.(0.4); // render done, encoding is the long half
 
   const left = buffer.getChannelData(0);

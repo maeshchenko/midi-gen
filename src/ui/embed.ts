@@ -47,7 +47,7 @@ export function renderEmbed(app: HTMLElement, code: string | null): void {
       progress.style.width = '0%';
       return;
     }
-    player ??= createPlayer(song, { loop: true });
+    player ??= createPlayer(song, { loop: true, real: false });
     void player.play().then(() => {
       playBtn.textContent = '■';
       cancelAnimationFrame(rafId);
