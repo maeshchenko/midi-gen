@@ -25,6 +25,16 @@ export type SampleSet =
   | 'mutedTrumpet'
   | 'vibraphone';
 
+/**
+ * Resolve a root-absolute sample baseUrl against Vite's deploy base. On Pages
+ * the app lives under /midi-gen/, so a bare `/samples/...` would 404 at the
+ * domain root — prefix it with import.meta.env.BASE_URL (`/` in dev/tests).
+ */
+export function resolveSampleBase(baseUrl: string): string {
+  const base = (import.meta as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
+  return base.replace(/\/$/, '') + baseUrl;
+}
+
 export interface SampleSetDef {
   baseUrl: string;
   /** note name → file (Tone.Sampler repitches to fill the gaps). */

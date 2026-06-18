@@ -16,6 +16,7 @@ import {
   SAMPLE_SETS,
   REAL_PROGRAM_MAP,
   REAL_DRUM_KITS,
+  resolveSampleBase,
   type SampleSetDef,
   type DrumKitDef,
 } from './samples';
@@ -905,7 +906,7 @@ function makeSampler(
   const buildPath = (dest: Tone.ToneAudioNode) => {
     const sampler = new Tone.Sampler({
       urls: def.urls,
-      baseUrl: def.baseUrl,
+      baseUrl: resolveSampleBase(def.baseUrl),
       release: def.release ?? 0.4,
       attack: def.attack ?? 0,
     });
@@ -1042,7 +1043,7 @@ function makeRealDrumKit(
     for (const layer of lane.layers)
       for (const f of layer.rr) {
         const key = f.replace(/\.mp3$/, '');
-        const pl = new Tone.Player({ url: def.baseUrl + f, volume: -3 });
+        const pl = new Tone.Player({ url: resolveSampleBase(def.baseUrl) + f, volume: -3 });
         pl.connect(lanePanners[laneName]!);
         fileToPlayer[key] = pl;
       }
