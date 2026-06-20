@@ -17,6 +17,7 @@ import { GRIMERUN } from './grimerun';
 import { DOOMERWAVE } from './doomerwave';
 import { DOOMERRUN } from './doomerrun';
 import { NIGHTCORERUN } from './nightcorerun';
+import { MEDIEVAL } from './medieval';
 import { TEST } from './test';
 
 /**
@@ -41,6 +42,7 @@ export const GENRES: Partial<Record<GenreId, GenreConfig>> = {
   doomerwave: DOOMERWAVE,
   doomerrun: DOOMERRUN,
   nightcorerun: NIGHTCORERUN,
+  medieval: MEDIEVAL,
   test: TEST,
 };
 

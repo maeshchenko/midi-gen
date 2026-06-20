@@ -49,6 +49,7 @@ describe('track titles', () => {
       doomerwave: 'a75ec1cc',
       doomerrun: '3cf86c74',
       nightcorerun: '29d93e0',
+      medieval: 'ed8a805d',
       test: 'ca956238',
     };
     for (const genre of GENRE_IDS) {

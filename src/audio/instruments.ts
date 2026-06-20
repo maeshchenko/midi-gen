@@ -322,7 +322,7 @@ function makeStrings(out: Tone.ToneAudioNode, solo: boolean): Voice {
     oscillator: { type: 'sawtooth' },
     envelope: { attack: solo ? 0.08 : 0.35, decay: 0.3, sustain: 0.8, release: solo ? 0.3 : 0.9 },
   });
-  synth.volume.value = solo ? -8 : -16;
+  synth.volume.value = solo ? -4 : -16; // solo = lead-скрипка, выводим над ритмом (был -8)
   const filter = new Tone.Filter(solo ? 3200 : 2200, 'lowpass');
   const vibrato = new Tone.Vibrato(5, solo ? 0.15 : 0.06);
   synth.chain(filter, vibrato, out);
@@ -345,6 +345,28 @@ function makeHarmonica(out: Tone.ToneAudioNode): Voice {
   });
   synth.volume.value = -7;
   const vibrato = new Tone.Vibrato(5.5, 0.2); // wailing
+  synth.chain(vibrato, out);
+  return {
+    trigger: monoGuard((p, t, d, v) => synth.triggerAttackRelease(midiHz(p), d, t, v)),
+    dispose: () => {
+      synth.dispose();
+      vibrato.dispose();
+    },
+  };
+}
+
+// Pennywhistle / flute lead (Kingdom-Rush medieval). Mono so the line is one
+// clear voice; fast clean attack so each note's onset reads the beat; gentle
+// vibrato + a breathy triangle tone. Sits above the rhythm section (-4).
+function makeWhistle(out: Tone.ToneAudioNode): Voice {
+  const synth = new Tone.MonoSynth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.012, decay: 0.08, sustain: 0.75, release: 0.1 },
+    filter: { type: 'lowpass', Q: 1 },
+    filterEnvelope: { attack: 0.01, decay: 0.1, sustain: 0.85, release: 0.1, baseFrequency: 1800, octaves: 1.2 },
+  });
+  synth.volume.value = -4;
+  const vibrato = new Tone.Vibrato(5, 0.08);
   synth.chain(vibrato, out);
   return {
     trigger: monoGuard((p, t, d, v) => synth.triggerAttackRelease(midiHz(p), d, t, v)),
@@ -444,7 +466,7 @@ function makeSupersawLead(out: Tone.ToneAudioNode, bpm: number): Voice {
     oscillator: { type: 'fatsawtooth', count: 3, spread: 24 },
     envelope: { attack: 0.01, decay: 0.12, sustain: 0.7, release: 0.15 },
   });
-  synth.volume.value = -9;
+  synth.volume.value = -5; // lead — над ритм-секцией (был -9)
   const filter = new Tone.Filter(5200, 'lowpass');
   const delay = new Tone.FeedbackDelay((60 / bpm) / 2, 0.3); // 8th echo
   delay.wet.value = 0.22;
@@ -472,7 +494,7 @@ function makeColdLead(out: Tone.ToneAudioNode, bpm: number): Voice {
     filter: { type: 'lowpass', Q: 1.5 },
     filterEnvelope: { attack: 0.02, decay: 0.2, sustain: 0.6, release: 0.3, baseFrequency: 700, octaves: 2 },
   });
-  synth.volume.value = -10;
+  synth.volume.value = -5; // lead — над ритм-секцией (был -10)
   const chorus = makeChorus(0.8, 0.7);
   const delay = new Tone.FeedbackDelay((60 / bpm) * 0.75, 0.28); // dotted-8th
   delay.wet.value = 0.24;
@@ -626,7 +648,7 @@ function makeSymphonicLead(out: Tone.ToneAudioNode, bpm: number): Voice {
     filter: { type: 'lowpass', Q: 1 },
     filterEnvelope: { attack: 0.02, decay: 0.3, sustain: 0.8, release: 0.4, baseFrequency: 1200, octaves: 2.2 },
   });
-  synth.volume.value = -9;
+  synth.volume.value = -4; // lead-голос несёт мелодию — выводим над kick/snare (был -9, тонул)
   const vibrato = new Tone.Vibrato(5, 0.07);
   const delay = new Tone.FeedbackDelay((60 / bpm) / 2, 0.25);
   delay.wet.value = 0.2;
@@ -869,6 +891,80 @@ function makeDrumKit(out: Tone.ToneAudioNode, opts: DrumKitOpts = {}): Voice {
       clapBand.dispose();
       shaker.dispose();
       shakerHp.dispose();
+    },
+  };
+}
+
+/**
+ * Medieval percussion kit: MEMBRANE drums only — a deep tabor (kick lane), a
+ * warm woody frame drum / bodhrán (tom lanes, pitched low→high) and a tamed
+ * tambourine jingle (hatOpen lane). No noise-snare, hi-hat or crash — those
+ * read as a modern drum kit. Driven by the medievalDrums hook, which routes the
+ * StepPattern lanes onto these GM pitches.
+ */
+function makeMedievalKit(out: Tone.ToneAudioNode): Voice {
+  const tabor = new Tone.MembraneSynth({
+    pitchDecay: 0.045,
+    octaves: 2.5,
+    envelope: { attack: 0.002, decay: 0.34, sustain: 0.01, release: 0.3 },
+  });
+  tabor.volume.value = -7;
+  const taborLp = new Tone.Filter(360, 'lowpass'); // deep, no beater click
+  tabor.chain(taborLp, out);
+
+  const frame = new Tone.MembraneSynth({
+    pitchDecay: 0.06,
+    octaves: 2,
+    envelope: { attack: 0.001, decay: 0.22, sustain: 0, release: 0.18 },
+  });
+  frame.volume.value = -10;
+  const frameLp = new Tone.Filter(1300, 'lowpass'); // woody hand-drum tone
+  frame.chain(frameLp, out);
+
+  const jingle = new Tone.MetalSynth({
+    envelope: { attack: 0.001, decay: 0.16, release: 0.07 },
+    harmonicity: 6,
+    modulationIndex: 8, // tamed so the FM doesn't crackle the limiter
+    resonance: 4200,
+    octaves: 1.2,
+  });
+  jingle.volume.value = -21;
+  const jingleHp = new Tone.Filter(5000, 'highpass');
+  jingle.chain(jingleHp, out);
+
+  const gTabor = monoGuard((p, t, d, v) => tabor.triggerAttackRelease(midiHz(p), d, t, v));
+  const gFrame = monoGuard((p, t, d, v) => frame.triggerAttackRelease(midiHz(p), d, t, v));
+  const gJingle = monoGuard((p, t, _d, v) => jingle.triggerAttackRelease(midiHz(p), 0.15, t, v));
+
+  return {
+    trigger: (pitch, t, d, v) => {
+      switch (pitch) {
+        case GM_DRUMS.kick:
+          gTabor(40, t, d, v); // deep tabor
+          break;
+        case GM_DRUMS.tomLow:
+          gFrame(48, t, d, v); // low frame "doum"
+          break;
+        case GM_DRUMS.tomMid:
+          gFrame(55, t, d, v);
+          break;
+        case GM_DRUMS.tomHigh:
+          gFrame(62, t, d, v); // high frame "tek"
+          break;
+        case GM_DRUMS.tambourine:
+          gJingle(86, t, d, v);
+          break;
+        default:
+          gFrame(55, t, d, v * 0.6);
+      }
+    },
+    dispose: () => {
+      tabor.dispose();
+      taborLp.dispose();
+      frame.dispose();
+      frameLp.dispose();
+      jingle.dispose();
+      jingleHp.dispose();
     },
   };
 }
@@ -1185,6 +1281,8 @@ function voiceForTrack(
       return makeHarmonica(out);
     case 56:
       return makeTrumpet(out);
+    case 73:
+      return makeWhistle(out);
     case 61:
       return makeBrassSection(out);
     case 58:
@@ -1252,6 +1350,8 @@ function masterFx(genre: Song['genre']): Tone.ToneAudioNode[] {
       return [new Tone.Reverb({ decay: 1.0, wet: 0.2 })]; // parade square air
     case 'darkacademia':
       return [new Tone.Reverb({ decay: 2.4, wet: 0.3 })]; // stone hall
+    case 'medieval':
+      return [new Tone.Reverb({ decay: 2.6, wet: 0.26 })]; // castle hall / open field
     case 'musicbox':
       return [new Tone.Reverb({ decay: 2.2, wet: 0.28 }), new Tone.Filter(250, 'highpass')]; // tiny box in a quiet room
     case 'nightcorerun': {
@@ -1414,6 +1514,7 @@ export function buildEnsemble(song: Song, opts: { real?: boolean } = {}): Ensemb
     if (t.role === 'drums') {
       const kit = real ? REAL_DRUM_KITS[song.genre] : undefined;
       if (kit) return makeRealDrumKit(bus, kit, { onKick, reverb: reverb ?? undefined, send: VOICE_SEND.drums });
+      if (song.genre === 'medieval') return makeMedievalKit(bus);
       if (song.genre === 'noir') return makeDrumKit(bus, { dullKick: true });
       if (song.genre === 'doomerwave' || song.genre === 'doomerrun')
         return makeDrumKit(bus, { softKick: true, gatedSnare: true });

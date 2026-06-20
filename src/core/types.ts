@@ -17,6 +17,7 @@ export const GENRE_IDS = [
   'doomerrun',
   'nightcorerun',
   'test',
+  'medieval',
 ] as const;
 
 export type GenreId = (typeof GENRE_IDS)[number];
